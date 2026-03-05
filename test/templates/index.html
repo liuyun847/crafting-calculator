@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合成计算器 - Web 测试接口</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .terminal-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 10px;
+        }
+
+        .terminal-header {
+            background-color: #2d2d2d;
+            border: 1px solid #3e3e3e;
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            padding: 8px 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot-red { background-color: #ff5f56; }
+        .dot-yellow { background-color: #ffbd2e; }
+        .dot-green { background-color: #27c93f; }
+
+        .terminal-title {
+            margin-left: 10px;
+            color: #888;
+        }
+
+        .terminal-output {
+            flex: 1;
+            background-color: #0c0c0c;
+            border: 1px solid #3e3e3e;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            padding: 15px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .output-line {
+            margin-bottom: 2px;
+        }
+
+        .output-line.command {
+            color: #4ec9b0;
+        }
+
+        .output-line.response {
+            color: #d4d4d4;
+        }
+
+        .output-line.error {
+            color: #f44747;
+        }
+
+        .output-line.prompt {
+            color: #569cd6;
+        }
+
+        .terminal-input-container {
+            display: flex;
+            align-items: center;
+            background-color: #0c0c0c;
+            border: 1px solid #3e3e3e;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            padding: 10px 15px;
+        }
+
+        .prompt-text {
+            color: #569cd6;
+            margin-right: 8px;
+            white-space: nowrap;
+        }
+
+        #command-input {
+            flex: 1;
+            background-color: transparent;
+            border: none;
+            color: #d4d4d4;
+            font-family: inherit;
+            font-size: inherit;
+            outline: none;
+        }
+
+        #command-input::placeholder {
+            color: #555;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border: 2px solid #569cd6;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3e3e3e;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal-container">
+        <div class="terminal-header">
+            <div class="terminal-dot dot-red"></div>
+            <div class="terminal-dot dot-yellow"></div>
+            <div class="terminal-dot dot-green"></div>
+            <span class="terminal-title">合成计算器 - Web 测试接口</span>
+        </div>
+        <div class="terminal-output" id="terminal-output"></div>
+        <div class="terminal-input-container">
+            <span class="prompt-text" id="prompt-text">请选择操作 (1-5): </span>
+            <input type="text" id="command-input" placeholder="输入命令..." autocomplete="off" autofocus>
+            <span class="loading hidden" id="loading"></span>
+        </div>
+    </div>
+
+    <script>
+        const outputElement = document.getElementById('terminal-output');
+        const inputElement = document.getElementById('command-input');
+        const promptElement = document.getElementById('prompt-text');
+        const loadingElement = document.getElementById('loading');
+
+        let commandHistory = [];
+        let historyIndex = -1;
+
+        function appendOutput(text, className = 'response') {
+            const line = document.createElement('div');
+            line.className = `output-line ${className}`;
+            line.textContent = text;
+            outputElement.appendChild(line);
+            outputElement.scrollTop = outputElement.scrollHeight;
+        }
+
+        function appendCommand(command) {
+            const line = document.createElement('div');
+            line.className = 'output-line command';
+            line.textContent = `> ${command}`;
+            outputElement.appendChild(line);
+        }
+
+        function setPrompt(prompt) {
+            promptElement.textContent = prompt;
+        }
+
+        function showLoading() {
+            loadingElement.classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            loadingElement.classList.add('hidden');
+        }
+
+        async function sendCommand(command) {
+            appendCommand(command);
+            showLoading();
+
+            try {
+                const response = await fetch('/api/terminal', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ command: command })
+                });
+
+                const data = await response.json();
+
+                if (data.output) {
+                    appendOutput(data.output);
+                }
+                if (data.prompt) {
+                    setPrompt(data.prompt);
+                }
+            } catch (error) {
+                appendOutput(`错误: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+                inputElement.value = '';
+                inputElement.focus();
+            }
+        }
+
+        inputElement.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') {
+                const command = inputElement.value.trim();
+                if (command) {
+                    commandHistory.push(command);
+                    historyIndex = commandHistory.length;
+                    await sendCommand(command);
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    inputElement.value = commandHistory[historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    inputElement.value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = commandHistory.length;
+                    inputElement.value = '';
+                }
+            } else if (e.key === 'Escape') {
+                inputElement.value = '';
+            }
+        });
+
+        async function init() {
+            appendOutput('=====================================');
+            appendOutput('   自动化建造游戏通用合成计算器');
+            appendOutput('=====================================');
+            appendOutput('1. 选择配方文件');
+            appendOutput('2. 计算生产链');
+            appendOutput('3. 查看可用物品列表');
+            appendOutput('4. 添加配方');
+            appendOutput('5. 退出程序');
+            appendOutput('=====================================');
+            appendOutput('');
+            appendOutput('输入 help 查看帮助信息');
+            appendOutput('');
+        }
+
+        init();
+    </script>
+</body>
+</html>

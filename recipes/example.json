@@ -1,0 +1,737 @@
+{
+  "铁矿石采集": {
+    "device": "铁矿场",
+    "inputs": {},
+    "outputs": {
+      "铁矿石": {
+        "amount": 10.0,
+        "expression": "10"
+      }
+    }
+  },
+  "铜矿采集": {
+    "device": "铜矿场",
+    "inputs": {},
+    "outputs": {
+      "铜矿石": {
+        "amount": 10.0,
+        "expression": "10"
+      }
+    }
+  },
+  "煤矿采集": {
+    "device": "煤矿场",
+    "inputs": {},
+    "outputs": {
+      "煤炭": {
+        "amount": 15.0,
+        "expression": "15"
+      }
+    }
+  },
+  "石油开采": {
+    "device": "油井",
+    "inputs": {},
+    "outputs": {
+      "原油": {
+        "amount": 20.0,
+        "expression": "20"
+      }
+    }
+  },
+  "木材采集": {
+    "device": "伐木场",
+    "inputs": {},
+    "outputs": {
+      "木材": {
+        "amount": 25.0,
+        "expression": "25"
+      }
+    }
+  },
+  "铁矿冶炼": {
+    "device": "熔炉",
+    "inputs": {
+      "铁矿石": {
+        "amount": 10.0,
+        "expression": "10"
+      },
+      "煤炭": {
+        "amount": 5.0,
+        "expression": "5"
+      }
+    },
+    "outputs": {
+      "铁锭": {
+        "amount": 5.0,
+        "expression": "5"
+      }
+    }
+  },
+  "铜矿冶炼": {
+    "device": "熔炉",
+    "inputs": {
+      "铜矿石": {
+        "amount": 10.0,
+        "expression": "10"
+      },
+      "煤炭": {
+        "amount": 5.0,
+        "expression": "5"
+      }
+    },
+    "outputs": {
+      "铜锭": {
+        "amount": 5.0,
+        "expression": "5"
+      }
+    }
+  },
+  "钢板制造": {
+    "device": "滚压机",
+    "inputs": {
+      "铁锭": {
+        "amount": 10.0,
+        "expression": "10"
+      }
+    },
+    "outputs": {
+      "钢板": {
+        "amount": 4.0,
+        "expression": "4"
+      }
+    }
+  },
+  "铜板制造": {
+    "device": "滚压机",
+    "inputs": {
+      "铜锭": {
+        "amount": 10.0,
+        "expression": "10"
+      }
+    },
+    "outputs": {
+      "铜板": {
+        "amount": 4.0,
+        "expression": "4"
+      }
+    }
+  },
+  "塑料生产": {
+    "device": "化工厂",
+    "inputs": {
+      "原油": {
+        "amount": 20.0,
+        "expression": "20"
+      }
+    },
+    "outputs": {
+      "塑料": {
+        "amount": 8.0,
+        "expression": "8"
+      }
+    }
+  },
+  "橡胶生产": {
+    "device": "化工厂",
+    "inputs": {
+      "原油": {
+        "amount": 20.0,
+        "expression": "20"
+      }
+    },
+    "outputs": {
+      "橡胶": {
+        "amount": 6.0,
+        "expression": "6"
+      }
+    }
+  },
+  "电线制造": {
+    "device": "组装机",
+    "inputs": {
+      "铜锭": {
+        "amount": 5.0,
+        "expression": "5"
+      }
+    },
+    "outputs": {
+      "电线": {
+        "amount": 15.0,
+        "expression": "15"
+      }
+    }
+  },
+  "电路板制造": {
+    "device": "组装机",
+    "inputs": {
+      "铜板": {
+        "amount": 4.0,
+        "expression": "4"
+      },
+      "塑料": {
+        "amount": 2.0,
+        "expression": "2"
+      },
+      "电线": {
+        "amount": 6.0,
+        "expression": "6"
+      }
+    },
+    "outputs": {
+      "电路板": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  },
+  "齿轮制造": {
+    "device": "组装机",
+    "inputs": {
+      "铁锭": {
+        "amount": 5.0,
+        "expression": "5"
+      }
+    },
+    "outputs": {
+      "齿轮": {
+        "amount": 2.0,
+        "expression": "2"
+      }
+    }
+  },
+  "机械臂制造": {
+    "device": "组装机",
+    "inputs": {
+      "铁锭": {
+        "amount": 5.0,
+        "expression": "5"
+      },
+      "齿轮": {
+        "amount": 2.0,
+        "expression": "2"
+      },
+      "电线": {
+        "amount": 3.0,
+        "expression": "3"
+      }
+    },
+    "outputs": {
+      "机械臂": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  },
+  "传送带制造": {
+    "device": "组装机",
+    "inputs": {
+      "铁锭": {
+        "amount": 3.0,
+        "expression": "3"
+      },
+      "橡胶": {
+        "amount": 2.0,
+        "expression": "2"
+      }
+    },
+    "outputs": {
+      "传送带": {
+        "amount": 10.0,
+        "expression": "10"
+      }
+    }
+  },
+  " inserter制造": {
+    "device": "组装机",
+    "inputs": {
+      "机械臂": {
+        "amount": 1.0,
+        "expression": "1"
+      },
+      "齿轮": {
+        "amount": 1.0,
+        "expression": "1"
+      },
+      "传送带": {
+        "amount": 2.0,
+        "expression": "2"
+      }
+    },
+    "outputs": {
+      " inserter": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  },
+  "熔炉制造": {
+    "device": "组装机",
+    "inputs": {
+      "钢板": {
+        "amount": 5.0,
+        "expression": "5"
+      },
+      "铁锭": {
+        "amount": 10.0,
+        "expression": "10"
+      }
+    },
+    "outputs": {
+      "熔炉": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  },
+  "组装机制造": {
+    "device": "组装机",
+    "inputs": {
+      "钢板": {
+        "amount": 10.0,
+        "expression": "10"
+      },
+      "齿轮": {
+        "amount": 5.0,
+        "expression": "5"
+      },
+      "电路板": {
+        "amount": 2.0,
+        "expression": "2"
+      }
+    },
+    "outputs": {
+      "组装机": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  },
+  "采矿机制造": {
+    "device": "组装机",
+    "inputs": {
+      "钢板": {
+        "amount": 15.0,
+        "expression": "15"
+      },
+      "齿轮": {
+        "amount": 10.0,
+        "expression": "10"
+      },
+      " inserter": {
+        "amount": 2.0,
+        "expression": "2"
+      }
+    },
+    "outputs": {
+      "采矿机": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  },
+  "发电站制造": {
+    "device": "组装机",
+    "inputs": {
+      "钢板": {
+        "amount": 20.0,
+        "expression": "20"
+      },
+      "铜锭": {
+        "amount": 10.0,
+        "expression": "10"
+      },
+      "煤炭": {
+        "amount": 50.0,
+        "expression": "50"
+      }
+    },
+    "outputs": {
+      "发电站": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  },
+  "电池制造": {
+    "device": "化工厂",
+    "inputs": {
+      "铜锭": {
+        "amount": 5.0,
+        "expression": "5"
+      },
+      "铅": {
+        "amount": 10.0,
+        "expression": "10"
+      },
+      "硫酸": {
+        "amount": 20.0,
+        "expression": "20"
+      }
+    },
+    "outputs": {
+      "电池": {
+        "amount": 2.0,
+        "expression": "2"
+      }
+    }
+  },
+  "硫酸生产": {
+    "device": "化工厂",
+    "inputs": {
+      "硫磺": {
+        "amount": 5.0,
+        "expression": "5"
+      },
+      "水": {
+        "amount": 100.0,
+        "expression": "100"
+      }
+    },
+    "outputs": {
+      "硫酸": {
+        "amount": 50.0,
+        "expression": "50"
+      }
+    }
+  },
+  "高级电路板制造": {
+    "device": "组装机",
+    "inputs": {
+      "电路板": {
+        "amount": 2.0,
+        "expression": "2"
+      },
+      "塑料": {
+        "amount": 5.0,
+        "expression": "5"
+      },
+      "电线": {
+        "amount": 10.0,
+        "expression": "10"
+      },
+      "电池": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    },
+    "outputs": {
+      "高级电路板": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  },
+  "机器人制造": {
+    "device": "组装机",
+    "inputs": {
+      "高级电路板": {
+        "amount": 3.0,
+        "expression": "3"
+      },
+      "钢板": {
+        "amount": 15.0,
+        "expression": "15"
+      },
+      "电池": {
+        "amount": 5.0,
+        "expression": "5"
+      },
+      "齿轮": {
+        "amount": 10.0,
+        "expression": "10"
+      }
+    },
+    "outputs": {
+      "机器人": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  },
+  "无人机制造": {
+    "device": "组装机",
+    "inputs": {
+      "高级电路板": {
+        "amount": 2.0,
+        "expression": "2"
+      },
+      "塑料": {
+        "amount": 10.0,
+        "expression": "10"
+      },
+      "电池": {
+        "amount": 3.0,
+        "expression": "3"
+      },
+      "橡胶": {
+        "amount": 5.0,
+        "expression": "5"
+      }
+    },
+    "outputs": {
+      "无人机": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  },
+  "导弹制造": {
+    "device": "组装机",
+    "inputs": {
+      "钢板": {
+        "amount": 10.0,
+        "expression": "10"
+      },
+      "塑料": {
+        "amount": 5.0,
+        "expression": "5"
+      },
+      "炸药": {
+        "amount": 20.0,
+        "expression": "20"
+      },
+      "电路板": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    },
+    "outputs": {
+      "导弹": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  },
+  "炸药生产": {
+    "device": "化工厂",
+    "inputs": {
+      "硫磺": {
+        "amount": 10.0,
+        "expression": "10"
+      },
+      "硝酸": {
+        "amount": 20.0,
+        "expression": "20"
+      },
+      "木炭": {
+        "amount": 5.0,
+        "expression": "5"
+      }
+    },
+    "outputs": {
+      "炸药": {
+        "amount": 10.0,
+        "expression": "10"
+      }
+    }
+  },
+  "硝酸生产": {
+    "device": "化工厂",
+    "inputs": {
+      "氨": {
+        "amount": 10.0,
+        "expression": "10"
+      },
+      "氧气": {
+        "amount": 20.0,
+        "expression": "20"
+      },
+      "水": {
+        "amount": 50.0,
+        "expression": "50"
+      }
+    },
+    "outputs": {
+      "硝酸": {
+        "amount": 30.0,
+        "expression": "30"
+      }
+    }
+  },
+  "氨生产": {
+    "device": "化工厂",
+    "inputs": {
+      "氮气": {
+        "amount": 10.0,
+        "expression": "10"
+      },
+      "氢气": {
+        "amount": 30.0,
+        "expression": "30"
+      }
+    },
+    "outputs": {
+      "氨": {
+        "amount": 20.0,
+        "expression": "20"
+      }
+    }
+  },
+  "太阳能板制造": {
+    "device": "组装机",
+    "inputs": {
+      "钢板": {
+        "amount": 5.0,
+        "expression": "5"
+      },
+      "铜锭": {
+        "amount": 10.0,
+        "expression": "10"
+      },
+      "玻璃": {
+        "amount": 15.0,
+        "expression": "15"
+      }
+    },
+    "outputs": {
+      "太阳能板": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  },
+  "玻璃生产": {
+    "device": "熔炉",
+    "inputs": {
+      "沙子": {
+        "amount": 20.0,
+        "expression": "20"
+      },
+      "煤炭": {
+        "amount": 10.0,
+        "expression": "10"
+      }
+    },
+    "outputs": {
+      "玻璃": {
+        "amount": 10.0,
+        "expression": "10"
+      }
+    }
+  },
+  "核电站制造": {
+    "device": "组装机",
+    "inputs": {
+      "钢板": {
+        "amount": 100.0,
+        "expression": "100"
+      },
+      "高级电路板": {
+        "amount": 10.0,
+        "expression": "10"
+      },
+      "铀燃料棒": {
+        "amount": 5.0,
+        "expression": "5"
+      },
+      "混凝土": {
+        "amount": 200.0,
+        "expression": "200"
+      }
+    },
+    "outputs": {
+      "核电站": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  },
+  "混凝土生产": {
+    "device": "搅拌机",
+    "inputs": {
+      "石灰石": {
+        "amount": 50.0,
+        "expression": "50"
+      },
+      "沙子": {
+        "amount": 25.0,
+        "expression": "25"
+      },
+      "水": {
+        "amount": 100.0,
+        "expression": "100"
+      }
+    },
+    "outputs": {
+      "混凝土": {
+        "amount": 50.0,
+        "expression": "50"
+      }
+    }
+  },
+  "铀燃料棒制造": {
+    "device": "核反应堆",
+    "inputs": {
+      "铀矿石": {
+        "amount": 10.0,
+        "expression": "10"
+      },
+      "黄饼": {
+        "amount": 5.0,
+        "expression": "5"
+      }
+    },
+    "outputs": {
+      "铀燃料棒": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  },
+  "大矿机": {
+    "device": "大矿机",
+    "inputs": {},
+    "outputs": {
+      "铁矿石": {
+        "amount": 2700.0,
+        "expression": "2700"
+      }
+    }
+  },
+  "电弧炉": {
+    "device": "电弧炉",
+    "inputs": {
+      "铁矿石": {
+        "amount": 100.0,
+        "expression": "100"
+      }
+    },
+    "outputs": {
+      "铁锭": {
+        "amount": 100.0,
+        "expression": "100"
+      }
+    }
+  },
+  "测试物品生产": {
+    "device": "测试设备",
+    "inputs": {
+      "铁矿石": {
+        "amount": 10.0,
+        "expression": "10"
+      }
+    },
+    "outputs": {
+      "测试物品": {
+        "amount": 5.0,
+        "expression": "5"
+      }
+    }
+  },
+  "玻璃生产_2": {
+    "device": "组装机",
+    "inputs": {
+      "沙子": {
+        "amount": 10.0,
+        "expression": "10"
+      }
+    },
+    "outputs": {
+      "玻璃": {
+        "amount": 10.0,
+        "expression": "10"
+      }
+    }
+  }
+}
