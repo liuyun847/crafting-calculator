@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 合成计算器{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- 欢迎区域 -->
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <h1 class="card-title">欢迎使用合成计算器</h1>
+                <p class="card-subtitle">自动化建造游戏通用生产链计算工具</p>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if current_game %}
+                <p>当前已加载配方文件：<strong>{{ current_game }}</strong></p>
+                <p>您可以直接进行生产链计算或管理配方。</p>
+            {% else %}
+                <p>您尚未选择配方文件，请先选择配方文件开始使用。</p>
+                <a href="/select-game" class="btn btn-primary">选择配方文件</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    {% if current_game %}
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📋</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.recipe_count }}</div>
+                <div class="stat-label">配方总数</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📦</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.item_count }}</div>
+                <div class="stat-label">物品总数</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🎮</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ available_games|length }}</div>
+                <div class="stat-label">可用配方文件</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 快捷操作 -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">快捷操作</h2>
+        </div>
+        <div class="card-body">
+            <div class="grid grid-2">
+                <a href="/calculate" class="quick-action">
+                    <div class="quick-action-icon">🧮</div>
+                    <div class="quick-action-content">
+                        <h3>计算生产链</h3>
+                        <p>输入目标物品和生产速率，计算完整的生产链</p>
+                    </div>
+                </a>
+                <a href="/recipe-management" class="quick-action">
+                    <div class="quick-action-icon">📝</div>
+                    <div class="quick-action-content">
+                        <h3>配方管理</h3>
+                        <p>查看、添加、修改和删除配方</p>
+                    </div>
+                </a>
+                <a href="/select-game" class="quick-action">
+                    <div class="quick-action-icon">📁</div>
+                    <div class="quick-action-content">
+                        <h3>切换配方文件</h3>
+                        <p>选择其他游戏的配方文件</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 使用说明 -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">使用说明</h2>
+        </div>
+        <div class="card-body">
+            <div class="help-section">
+                <h4>🚀 快速开始</h4>
+                <ol>
+                    <li>选择或确认配方文件</li>
+                    <li>进入"计算生产链"页面</li>
+                    <li>输入目标物品名称（支持自动补全）</li>
+                    <li>输入目标生产速率（如：15/min）</li>
+                    <li>查看计算结果和合成树</li>
+                </ol>
+            </div>
+            <div class="help-section">
+                <h4>💡 提示</h4>
+                <ul>
+                    <li>生产速率支持表达式，如：15/min、2.5/s、100/h</li>
+                    <li>合成树中带有 [+N] 标记的节点可以点击切换替代路径</li>
+                    <li>配方管理支持搜索、分页和批量操作</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.quick-action {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-lg);
+    background-color: var(--color-background);
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    color: var(--color-text);
+    transition: var(--transition-fast);
+    border: 2px solid transparent;
+}
+
+.quick-action:hover {
+    border-color: var(--color-primary);
+    background-color: rgba(37, 99, 235, 0.05);
+}
+
+.quick-action-icon {
+    font-size: 2.5rem;
+    margin-right: var(--spacing-md);
+}
+
+.quick-action-content h3 {
+    font-size: 1.125rem;
+    margin-bottom: var(--spacing-xs);
+}
+
+.quick-action-content p {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.help-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.help-section:last-child {
+    margin-bottom: 0;
+}
+
+.help-section h4 {
+    margin-bottom: var(--spacing-sm);
+    color: var(--color-primary);
+}
+
+.help-section ol,
+.help-section ul {
+    padding-left: var(--spacing-lg);
+}
+
+.help-section li {
+    margin-bottom: var(--spacing-xs);
+    color: var(--color-text-secondary);
+}
+
+@media (max-width: 768px) {
+    .quick-action {
+        padding: var(--spacing-md);
+    }
+
+    .quick-action-icon {
+        font-size: 2rem;
+    }
+}
+</style>
+{% endblock %}

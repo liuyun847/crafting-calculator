@@ -196,26 +196,27 @@ class RecipeManager:
             匹配的配方列表
         """
         matching_recipes = []
+        stripped_item_name = item_name.strip()
+        seen_recipes = set()
         
-        for recipe in self.recipes.values():
-            match = False
-            
+        for recipe_name, recipe in self.recipes.items():
             # 在输入物品中搜索，忽略空格
             if search_inputs:
                 for input_item in recipe["inputs"].keys():
-                    if input_item.strip() == item_name:
-                        match = True
+                    if input_item.strip() == stripped_item_name:
+                        if recipe_name not in seen_recipes:
+                            matching_recipes.append(recipe)
+                            seen_recipes.add(recipe_name)
                         break
             
             # 在输出物品中搜索，忽略空格
             if search_outputs:
                 for output_item in recipe["outputs"].keys():
-                    if output_item.strip() == item_name:
-                        match = True
+                    if output_item.strip() == stripped_item_name:
+                        if recipe_name not in seen_recipes:
+                            matching_recipes.append(recipe)
+                            seen_recipes.add(recipe_name)
                         break
-            
-            if match:
-                matching_recipes.append(recipe)
         
         return matching_recipes
     
@@ -261,6 +262,8 @@ class RecipeManager:
         
         # 检查输入输出格式
         for item_dict in [recipe["inputs"], recipe["outputs"]]:
+            if not isinstance(item_dict, dict):
+                return False
             for item_name, item_data in item_dict.items():
                 if not isinstance(item_data, dict):
                     return False

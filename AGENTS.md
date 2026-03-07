@@ -2,23 +2,22 @@
 
 ## 项目概述
 
-自动化建造游戏通用合成计算器是一个用于计算自动化建造游戏中生产链和所需设备数量的应用程序。该项目帮助玩家计算生产特定物品所需的基础原料消耗、设备数量和完整的合成树结构。
+自动化建造游戏通用合成计算器用于计算生产链和所需设备数量，帮助玩家计算生产特定物品所需的基础原料、设备数量和完整的合成树结构。
 
 **主要功能：**
 - 配方数据管理（支持多个游戏配方文件）
 - 复杂表达式解析（数学表达式 + 时间单位转换）
 - 合成树构建和多路径计算
 - 设备数量统计和基础原料消耗分析
-- 终端交互界面
-- Web浏览器界面（支持Playwright自动化测试）
+- 终端交互界面 + Web浏览器界面
 
 ## 技术栈
 
 - **编程语言：** Python 3.12
 - **核心库：** Python 标准库（json, os, re, math, typing）
-- **Web框架：** Flask（用于浏览器界面）
-- **界面类型：** 终端命令行界面（CLI）+ Web浏览器界面
-- **数据格式：** JSON（配方文件存储）
+- **Web框架：** Flask
+- **数据格式：** JSON
+- **测试框架：** pytest 7.x + pytest-cov
 
 ## 项目结构
 
@@ -26,118 +25,89 @@
 合成计算/
 ├── main.py                  # 主程序入口（终端模式）
 ├── io_interface.py          # 输入输出抽象接口
-├── application_controller.py # 应用程序控制器（业务逻辑层）
+├── application_controller.py # 应用程序控制器
 ├── calculator.py            # 核心计算引擎
 ├── expression_parser.py     # 表达式解析模块
 ├── data_manager.py         # 数据管理模块
 ├── config_manager.py       # 配置管理模块
-├── config.json             # 用户配置文件（自动生成）
-├── test/                   # 测试接口目录
-│   ├── web_server.py      # Web 服务器模块（Flask）
-│   └── templates/         # Web 模板目录
-│       └── index.html     # Web 前端界面
+├── tests/                  # 单元测试目录
+├── web/                    # Web测试接口目录（终端风格）
+│   ├── web_server.py      # Flask Web服务器
+│   ├── test_recipe_api.py # API测试脚本
+│   └── templates/
+│       └── index.html     # Web前端界面
+├── web_gui/                # Web GUI应用目录（现代化界面）
+│   ├── app.py             # Flask GUI应用
+│   ├── static/            # 静态资源
+│   │   ├── css/
+│   │   │   └── main.css
+│   │   └── js/
+│   │       └── main.js
+│   └── templates/         # HTML模板
+│       ├── base.html
+│       ├── dashboard.html
+│       ├── select_game.html
+│       ├── calculate.html
+│       └── recipe_management.html
 ├── recipes/                # 配方文件存储目录
-│   └── example.json      # 示例配方文件（36个配方）
-├── .trae/                  # 项目文档目录
-│   └── documents/        # 开发文档
-│       ├── web-test-interface-plan.md
-│       └── web-interface-refactoring-plan.md
-└── __pycache__/            # Python 缓存目录
+└── config.json             # 用户配置文件
 ```
 
 ## 核心模块说明
 
-### 1. io_interface.py - 输入输出抽象接口
-提供统一的输入输出接口，支持终端和Web两种实现方式：
-- `IOInterface` 抽象基类：定义输入输出接口规范
-- `TerminalIO` 实现类：终端输入输出实现（基于print/input）
-- `WebIO` 实现类：Web输入输出实现（基于缓冲区和队列）
+| 模块 | 职责 |
+|------|------|
+| `io_interface.py` | IO抽象接口，`IOInterface`基类 + `TerminalIO`/`WebIO`实现 |
+| `application_controller.py` | 业务逻辑层，配方管理（增删改查）、路径对比、主菜单处理 |
+| `main.py` | 终端入口，创建 `TerminalIO` + `ApplicationController` |
+| `calculator.py` | 计算引擎，`CraftingNode`、`CraftingCalculator`、`PathComparisonEngine` |
+| `expression_parser.py` | 解析数学表达式和时间单位（如 `15/min` → 个/秒） |
+| `data_manager.py` | 配方数据的加载、保存、搜索、验证 |
+| `config_manager.py` | 配置持久化，记忆上次选择的配方文件 |
+| `web/web_server.py` | Flask Web服务器，RESTful API + 终端风格Web界面 |
+| `web_gui/app.py` | Flask Web GUI应用，现代化图形界面 |
 
-### 2. application_controller.py - 应用程序控制器
-包含所有业务逻辑，通过IOInterface与用户交互：
-- `ApplicationController` 类：应用程序控制器
-- 主菜单处理逻辑
-- 配方文件选择和管理
-- 生产链计算和结果展示
-- **配方管理功能（增删改查）**
-  - 查看配方列表（支持分页和搜索）
-  - 添加配方（包括智能提示）
-  - 修改配方（逐字段编辑）
-  - 删除配方（支持确认提示）
-- **路径对比功能**
-  - 主路径自动选择（设备数最少）
-  - 节点替代路径标记 `[+N]`
-  - 交互式路径切换（`alt <节点编号>`）
-- 物品列表查看
-- 状态机管理（Web模式）
+### API 端点（web/web_server.py）
 
-### 3. main.py - 主程序入口（终端模式）
-负责终端界面的启动：
-- 创建 `TerminalIO` 实例
-- 创建 `ApplicationController` 实例
-- 调用 `controller.run()` 启动应用程序
+```
+GET  /api/games              # 获取配方文件列表
+POST /api/select-game        # 选择配方文件
+GET  /api/items              # 获取物品列表
+GET  /api/recipes            # 获取配方列表（支持分页、搜索）
+GET  /api/recipes/<name>     # 获取单个配方详情
+POST /api/recipes            # 创建新配方
+PUT  /api/recipes/<name>     # 更新配方
+DELETE /api/recipes/<name>   # 删除配方
+POST /api/calculate          # 计算生产链
+GET  /api/calculate/alternatives  # 获取节点的可选路径
+GET  /api/paths/compare      # 对比多条路径
+POST /api/terminal           # 终端命令处理（主要测试接口）
+POST /api/reset              # 重置终端会话
+```
 
-### 4. calculator.py - 计算引擎
-核心计算模块，提供：
-- `CraftingNode` 类：合成节点数据结构
-  - `alternative_paths`：节点的替代路径列表
-  - `path_id`：路径唯一标识
-  - `is_alternative`：是否为替代路径标记
-- `CraftingCalculator` 类：合成计算器
-- `PathComparisonEngine` 类：**路径对比引擎（新增）**
-  - `find_main_path()`：根据设备数量选择主路径
-  - `find_alternative_paths_at_node()`：查找节点的所有替代路径
-  - `build_path_tree_with_markers()`：构建带标记的路径树
-- 合成树构建算法
-- 多路径查找和排序
-- 设备数量计算
-- 特殊配方处理（催化剂、自循环等）
+### API 端点（web_gui/app.py）
 
-### 5. expression_parser.py - 表达式解析器
-解析复杂表达式，包括：
-- 数学表达式计算（支持 +, -, *, /, ()）
-- 时间单位转换（s, sec, second, m, min, minute, h, hour）
-- 统一转换为标准单位（个/秒）
-- 支持数学函数（sin, cos, sqrt, pow 等）
+**页面路由：**
+```
+GET /                        # 首页仪表盘
+GET /select-game             # 配方选择页面
+GET /calculate               # 生产链计算页面
+GET /recipe-management       # 配方管理页面
+```
 
-### 6. data_manager.py - 数据管理器
-配方数据管理模块，提供：
-- 配方文件加载和保存
-- 配方增删改查
-- 多游戏配方文件管理
-- 配方搜索功能
-- 配方验证
-
-### 7. config_manager.py - 配置管理器
-配置管理模块，提供：
-- 配置文件加载和保存
-- 上次选择的配方文件记忆
-- 自动加载上次选择的配方文件
-- 配置项持久化存储
-
-### 8. test/web_server.py - Web 服务器模块
-Web 服务器模块（位于 `test/` 目录），提供：
-- 基于 Flask 的 HTTP 服务器
-- RESTful API 接口
-- **终端风格 Web 测试界面**（与终端程序行为完全一致）
-- 支持 Playwright 自动化测试
-- `WebSession` 类：管理Web会话状态
-- 自动配置 Python 路径以导入项目核心模块
-
-**API 端点：**
-- `GET /api/games` - 获取配方文件列表
-- `POST /api/select-game` - 选择配方文件
-- `GET /api/items` - 获取物品列表
-- **配方管理 API（新增）**
-  - `GET /api/recipes` - 获取配方列表（支持分页、搜索）
-  - `GET /api/recipes/<name>` - 获取单个配方详情
-  - `POST /api/recipes` - 创建新配方
-  - `PUT /api/recipes/<name>` - 更新配方
-  - `DELETE /api/recipes/<name>` - 删除配方
-- **路径对比 API（新增）**
-  - `POST /api/calculate` - 计算生产链（增强版，支持路径对比选项）
-  - `GET /api/calculate/alternatives` - 获取节点的可选路径列表
-  - `GET /api/paths/compare` - 对比多条路径
+**API 路由：**
+```
+GET  /api/games              # 获取配方文件列表
+POST /api/select-game        # 选择配方文件
+GET  /api/items              # 获取物品列表
+GET  /api/recipes            # 获取配方列表（支持分页、搜索）
+GET  /api/recipes/<name>     # 获取单个配方详情
+POST /api/recipes            # 创建新配方
+PUT  /api/recipes/<name>     # 更新配方
+DELETE /api/recipes/<name>   # 删除配方
+POST /api/calculate          # 计算生产链
+GET  /api/calculate/alternatives  # 获取节点的可选路径
+```
 
 ## 运行方式
 
@@ -146,346 +116,190 @@ Web 服务器模块（位于 `test/` 目录），提供：
 python main.py
 ```
 
-### 启动Web服务器
+### 启动Web服务器（终端风格）
 ```powershell
-python test\web_server.py
+python web\web_server.py  # 访问 http://127.0.0.1:5000
 ```
 
-Web服务器启动后，在浏览器中访问：http://127.0.0.1:5000
+### 启动Web GUI服务器（现代化界面）
+```powershell
+python web_gui\app.py  # 访问 http://127.0.0.1:5000
+```
 
 ### 使用流程
-1. 程序启动时自动加载上次选择的配方文件（如果存在）
-2. 选择配方文件（游戏名称）
+1. 程序自动加载上次选择的配方文件
+2. 选择配方文件（或创建新文件）
 3. 输入目标物品名称
-4. 输入目标生产速度（支持表达式，如 "15/min"）
+4. 输入目标生产速度（支持表达式，如 `15/min`）
 5. 查看计算结果（生产链、设备统计、基础原料）
 
-**注意：** 程序会自动记住您上次选择的配方文件，下次启动时自动加载。
-
 ## 配方文件格式
-
-配方文件使用 JSON 格式，存储在 `recipes/` 目录下：
 
 ```json
 {
   "配方名称": {
     "device": "设备名称",
     "inputs": {
-      "输入物品1": {
-        "amount": 数量,
-        "expression": "原始表达式"
-      }
+      "输入物品": {"amount": 10.0, "expression": "10"}
     },
     "outputs": {
-      "输出物品1": {
-        "amount": 数量,
-        "expression": "原始表达式"
-      }
+      "输出物品": {"amount": 5.0, "expression": "5"}
     }
   }
 }
 ```
-
-**示例：**
-```json
-{
-  "铁矿冶炼": {
-    "device": "熔炉",
-    "inputs": {
-      "铁矿石": {"amount": 10.0, "expression": "10"},
-      "煤炭": {"amount": 5.0, "expression": "5"}
-    },
-    "outputs": {
-      "铁锭": {"amount": 5.0, "expression": "5"}
-    }
-  }
-}
-```
-
-**说明：**
-- 配方名称作为 JSON 对象的键，是配方的唯一标识符
-- 配方对象包含 `device`、`inputs` 和 `outputs` 三个字段
-- 不需要在配方对象内部再存储 `recipe_name` 字段
-
-### 示例配方文件内容
-
-`recipes/example.json` 包含 **36个配方**，涵盖完整的工业生产链：
-
-| 类别 | 配方示例 |
-|------|---------|
-| 原料采集 | 铁矿石采集、铜矿采集、煤矿采集、石油开采、木材采集 |
-| 冶炼加工 | 铁矿冶炼、铜矿冶炼、玻璃生产 |
-| 制造加工 | 钢板制造、铜板制造、电线制造、齿轮制造 |
-| 化工生产 | 塑料生产、橡胶生产、硫酸生产、硝酸生产、氨生产、炸药生产 |
-| 电子制造 | 电路板制造、高级电路板制造 |
-| 设备制造 | 机械臂制造、传送带制造、熔炉制造、组装机制造、采矿机制造、发电站制造 |
-| 高级制造 | 机器人制造、无人机制造、导弹制造、太阳能板制造、核电站制造 |
 
 ## 表达式语法
 
-### 支持的格式
-- 纯数学表达式：`8*3/2`、`(10+5)*2/60`
-- 带时间单位：`15/min`、`2.5*3.14/h`、`5*2/3/min`
+- **纯数学表达式：** `8*3/2`、`(10+5)*2/60`
+- **带时间单位：** `15/min`、`2.5*3.14/h`
+- **支持单位：** `s/sec/second`, `m/min/minute`, `h/hour`
+- **数学函数：** `sin`, `cos`, `sqrt`, `pow`, `abs`, `round`
+- **常量：** `pi`, `e`
 
-### 支持的时间单位
-- `s`, `sec`, `second` - 秒
-- `m`, `min`, `minute` - 分钟
-- `h`, `hour` - 小时
-
-### 支持的数学函数
-- 基础运算：`+`, `-`, `*`, `/`, `()`
-- 常量：`pi`, `e`
-- 函数：`sin`, `cos`, `tan`, `sqrt`, `pow`, `abs`, `round`
-
-### 转换规则
-所有表达式最终转换为标准单位：**个/秒**
-
-示例：
-- `15/min` → `0.25` 个/秒
-- `2.5*3.14/h` → `0.00218` 个/秒
+**转换规则：** 所有表达式最终转换为 **个/秒**
 
 ## 配置文件格式
 
-配置文件使用 JSON 格式，存储在项目根目录下的 `config.json` 文件中：
-
 ```json
-{
-  "last_game": "配方文件名"
-}
+{"last_game": "配方文件名"}
 ```
-
-**配置项说明：**
-- `last_game`: 上次选择的配方文件名称
-
-**配置文件特性：**
-- 程序首次运行时自动创建配置文件
-- 选择配方文件后自动保存选择
-- 下次启动时自动加载上次选择的配方文件
-- 配置文件损坏或不存在时自动忽略，不影响程序运行
-
-**示例：**
-```json
-{
-  "last_game": "example"
-}
-```
-
-## 开发规范
-
-### 代码风格
-- 遵循 PEP 8 代码风格
-- 使用 UTF-8 编码
-- 完整的类型注释
-- 详细的函数和类文档字符串
-
-### 模块设计
-- 每个模块职责单一
-- 使用类型提示
-- 异常处理完善
-- 支持多游戏配方文件
-
-### 配方数据
-- 配方名称作为唯一标识符
-- 输入输出物品名称不能包含特殊字符
-- amount 字段必须为数值类型
-- expression 字段用于记录原始表达式
 
 ## 重要特性
 
 ### IO抽象层架构
-- **分层设计**：通过IOInterface抽象接口分离业务逻辑和交互方式
-- **代码复用**：终端和Web界面共享相同的业务逻辑
-- **易于扩展**：添加新界面（如GUI）只需要实现新的IOInterface
-- **行为一致**：终端和Web界面行为完全一致
+- 通过 `IOInterface` 分离业务逻辑和交互方式
+- 终端和Web界面共享相同的 `ApplicationController`
+- 易于扩展新界面（如GUI）
 
 ### 多路径计算与路径对比
-- 自动查找所有可能的生产路径
-- **主路径自动选择**：根据设备数量选择最优路径
-- **节点级路径对比**：在有多条路径的节点处标记 `[+N]`
-- **交互式路径切换**：支持 `alt <节点编号>` 命令切换路径
-- 路径优缺点分析（设备数、原料种类、效率评分）
-
-### 特殊配方处理
-- 催化剂识别（输入输出都有的物品）
-- 净产出计算
-- 自循环配方处理
-
-### 终端界面
-- 树形结构展示生产链
-- 清晰的菜单和提示
-- 错误处理和输入验证
-- 基础原料和设备统计
-
-### Web浏览器界面（测试接口）
-- **终端风格交互界面**（黑底白字，等宽字体）
-- 单一交互式文本输入框
-- 与终端程序完全一致的操作体验
-- 支持命令历史（上下键导航）
-- 树形结构文本展示生产链
-- 基础原料和设备统计文本输出
-- 支持表达式输入（如15/min）
-- 完整的错误处理和用户反馈
-- **会话级状态保持**（使用 Flask session）
+- **主路径自动选择：** 根据设备数量选择最优路径
+- **节点标记 `[+N]`：** 表示该节点有 N 条其他可选路径
+- **交互式路径切换：** `alt <节点编号>` 命令切换路径
 
 ### 智能提示功能
-- 显示已有的设备名称和物品名称
-- 按已有配方中的使用频率排序
-- **最近使用优先**：将最近添加/修改的配方中的设备和物品排在前面
-- **模糊搜索支持**：支持部分字符匹配，不仅限于开头匹配
-- 提供键入数字的快捷输入
-- 支持类似自动补全的搜索功能（键入字符后查找）
-- **表达式实时预览**：输入表达式时自动显示转换结果（如 `15/min` → `0.25/秒`）
-
-## 项目历史
-
-- 项目最初计划开发 GUI 版本（使用 tkinter）
-- 后改为终端版本以简化部署和使用
-- 核心计算引擎保持不变
-- 完整的配方管理和计算功能
-- 添加了基于Flask的Web浏览器界面
-- 支持Playwright自动化测试
-- 添加了智能提示功能（设备/物品名称建议和搜索）
-- **重构为IO抽象层架构**：通过IOInterface实现业务逻辑复用，终端和Web界面共享相同的ApplicationController
-- **新增配方管理增删改查功能**：完整的配方管理界面，支持查看、添加、修改、删除配方
-- **新增路径对比功能**：支持主路径自动选择、节点标记 `[+N]`、交互式路径切换
+- 设备/物品名称建议，按使用频率排序
+- 最近使用优先，模糊搜索支持
+- 表达式实时预览（如 `15/min` → `0.25/秒`）
 
 ## 常见任务
 
 ### 配方管理（增删改查）
+
 **终端模式：**
 1. 运行 `python main.py`
 2. 选择 `4. 配方管理` 进入子菜单
-3. 选择操作：
-   - `1` 查看配方列表（支持分页和搜索）
-   - `2` 添加配方（交互式输入）
-   - `3` 修改配方（选择配方后逐字段编辑）
-   - `4` 删除配方（支持确认提示）
+3. 选择操作：`1`查看 `2`添加 `3`修改 `4`删除
 
-**Web API 模式：**
-- `GET /api/recipes?page=1&per_page=10&search=关键词` - 查看配方列表
-- `POST /api/recipes` - 创建新配方
-- `PUT /api/recipes/<配方名称>` - 更新配方
-- `DELETE /api/recipes/<配方名称>` - 删除配方
+**Web API：** 见上方 API 端点列表
 
-### 创建新游戏配方文件
-1. 在 `recipes/` 目录下创建新的 JSON 文件
-2. 按照配方格式添加配方
-3. 程序会自动识别新文件
+### 计算生产链
 
-### 计算生产链（终端模式）
-1. 运行 `python main.py`
-2. 选择配方文件
-3. 选择 `2. 计算生产链`
-4. 输入目标物品和生产速度
-5. 查看计算结果（主路径显示，带 `[+N]` 标记的节点表示有其他路径）
-6. **路径对比操作：**
-   - 输入 `alt <节点编号>` 或 `a <节点编号>` - 切换到该节点的替代路径
-   - 输入 `la` 或 `list-alt` - 列出所有带标记的节点
-   - 输入 `h` 或 `help` - 显示帮助信息
-   - 输入 `q` 或 `quit` - 退出交互模式
+**终端模式：**
+1. 选择 `2. 计算生产链`
+2. 输入目标物品和生产速度
+3. 查看结果（主路径、带 `[+N]` 标记的节点）
+4. **路径对比命令：**
+   - `alt <编号>` / `a <编号>` - 切换到替代路径
+   - `la` / `list-alt` - 列出所有带标记的节点
+   - `h` / `help` - 显示帮助
+   - `q` / `quit` - 退出
 
-### 计算生产链（Web 模式 - 测试接口）
-**终端风格界面：**
-1. 运行 `python test\web_server.py`
-2. 在浏览器中访问 http://127.0.0.1:5000
-3. 在终端界面输入命令：
-   - 输入 `1` 选择配方文件
-   - 输入配方文件序号
-   - 输入 `2` 计算生产链
-   - 输入目标物品名称
-   - 输入目标生产速度（支持表达式如 `15/min`）
-4. 查看计算结果（主路径、带 `[+N]` 标记的节点、原料统计）
-5. 使用路径对比命令切换路径
-
-**RESTful API 直接调用：**
-- `POST /api/calculate` - 计算生产链（支持路径对比选项）
-  ```json
-  {
-    "target_item": "电路板",
-    "target_rate": "2/min",
-    "game_name": "example",
-    "options": {
-      "compare_paths": true,
-      "mark_alternatives": true
-    }
-  }
-  ```
-- `GET /api/calculate/alternatives?game_name=example&target_item=电路板&target_rate=2/min&node_item=铜锭` - 获取节点的可选路径
-- `GET /api/paths/compare?game_name=example&target_item=电路板&target_rate=2/min&path_indices=0,1,2` - 对比多条路径
-
-### 使用 Playwright 测试 Web 界面
-1. 启动 Web 服务器：`python test\web_server.py`
-2. 使用 Playwright 导航到 http://127.0.0.1:5000
-3. 通过 Playwright API 进行自动化测试
-4. 可用的 API 端点：
-   - **POST /api/terminal** - 终端命令处理（主要测试接口）
-   - POST /api/reset - 重置终端会话
-   - GET /api/games - 获取配方文件列表
-   - POST /api/select-game - 选择配方文件
-   - GET /api/items - 获取物品列表
-   - **配方管理 API**
-     - GET /api/recipes - 获取配方列表（支持分页、搜索）
-     - GET /api/recipes/<name> - 获取单个配方详情
-     - POST /api/recipes - 创建新配方
-     - PUT /api/recipes/<name> - 更新配方
-     - DELETE /api/recipes/<name> - 删除配方
-   - **路径对比 API**
-     - POST /api/calculate - 计算生产链（增强版）
-     - GET /api/calculate/alternatives - 获取节点的可选路径列表
-     - GET /api/paths/compare - 对比多条路径
-
-## 测试接口规范
-
-**重要：** Web 界面作为测试接口，必须与终端程序 (`main.py`) 保持行为一致。任何对终端程序功能的修改，都必须同步更新 `test/web_server.py` 中的 `/api/terminal` 端点逻辑。
+**Web 模式：** 访问 http://127.0.0.1:5000，操作与终端一致
 
 ### 终端命令格式
-**主菜单命令：**
+
+**主菜单：**
 ```
-1              # 选择配方文件（显示配方文件列表）
+1              # 选择配方文件
 1 <序号>       # 直接选择指定配方文件
-2              # 计算生产链（进入交互流程）
-2 <物品> <速度> # 直接计算生产链
-3              # 查看可用物品列表
-4              # 配方管理（进入子菜单）
-5 / exit / quit # 退出/重置会话
-help           # 显示帮助信息
-reset          # 重置会话状态
+2              # 计算生产链
+2 <物品> <速度> # 直接计算
+3              # 查看物品列表
+4              # 配方管理
+5/exit/quit    # 退出
+help           # 显示帮助
+reset          # 重置会话
 ```
 
-**配方管理子菜单命令：**
+**配方管理子菜单：**
 ```
-1              # 查看配方列表
-2              # 添加配方
-3              # 修改配方
-4              # 删除配方
-5              # 返回主菜单
-```
-
-**生产链显示后的路径对比命令：**
-```
-alt <编号>     # 切换到指定节点的替代路径
-a <编号>       # alt 的简写形式
-la             # 列出所有带 [+N] 标记的节点
-list-alt       # la 的完整形式
-h / help / ?   # 显示帮助信息
-q / quit / b / back  # 退出交互模式
+1  # 查看配方列表
+2  # 添加配方
+3  # 修改配方
+4  # 删除配方
+5  # 返回主菜单
 ```
 
-### API响应格式
-```json
-{
-  "success": true,
-  "output": "终端输出的文本内容",
-  "prompt": "请选择操作 (1-5): "
-}
+## 单元测试
+
+```powershell
+python -m pytest tests/                                    # 运行所有测试
+python -m pytest tests/ --cov=. --cov-report=html         # 生成覆盖率报告
+python -m pytest tests/test_expression_parser.py          # 运行特定测试文件
+python -m pytest tests/ -m unit                           # 只运行单元测试
+python -m pytest tests/ -m integration                    # 只运行集成测试
 ```
+
+### 测试覆盖情况
+
+| 模块 | 测试文件 | 覆盖率 |
+|------|---------|--------|
+| expression_parser.py | test_expression_parser.py | 82% |
+| config_manager.py | test_config_manager.py | 98% |
+| data_manager.py | test_data_manager.py | 98% |
+| calculator.py | test_crafting_*.py, test_path_*.py, test_byproduct_pool.py, test_special_recipe_*.py, test_raw_resource_devices.py, test_net_output_calculation.py | 92% |
+| io_interface.py | test_io_interface.py | 92% |
+| application_controller.py | test_application_controller.py | 10% |
+| web_gui | test_web_gui.py | - |
+| **整体** | 293+ 个测试用例 | **57%** |
+
+### 测试 Fixtures
+
+项目使用 pytest fixtures 提供共享的测试数据：
+
+- `temp_dir`: 临时目录
+- `sample_recipes`: 示例配方数据
+- `recipe_manager`: 配方管理器实例
+- `config_manager`: 配置管理器实例
+- `calculator`: 合成计算器实例
+- `path_comparison_engine`: 路径对比引擎实例
+- `terminal_io`: 终端IO实例
+- `web_io`: WebIO实例
+- `application_controller`: 应用控制器实例
+
+### pytest.ini 配置
+
+```ini
+[pytest]
+testpaths = tests
+python_files = test_*.py
+addopts = -v --strict-markers
+markers =
+    unit: 单元测试
+    integration: 集成测试
+    slow: 慢速测试
+```
+
+## 路径对比功能说明
+
+### 主路径选择算法
+1. **总设备数量最少**（首要标准）
+2. **配方数量更少**（设备数相同时）
+3. **选择第一个**（以上都相同时）
+
+### 路径切换流程
+1. 计算生产链后，系统显示主路径和带标记的节点
+2. 输入 `la` 查看所有带标记的节点及其编号
+3. 输入 `alt <编号>` 查看该节点的所有替代路径
+4. 选择要切换的路径，系统显示设备数量变化
+5. 确认后重新显示生产链
 
 ## 环境信息
 
 - **Python 版本：** 3.12
 - **操作系统：** Windows 10/11
 - **Shell：** PowerShell 5.1
-- **路径分隔符：** 使用反斜杠 `\`
 
 ## 注意事项
 
@@ -495,28 +309,10 @@ q / quit / b / back  # 退出交互模式
 4. 设备数量计算基于配方输出速度
 5. 程序支持多个游戏配方文件同时存在
 
-## 路径对比功能说明
+## 项目历史
 
-### 主路径选择算法
-系统根据以下标准自动选择主路径：
-1. **总设备数量最少**（首要标准）
-2. **配方数量更少**（设备数相同时）
-3. **选择第一个**（以上都相同时）
-
-### 节点标记 `[+N]` 含义
-- `[+N]` 表示该节点有 **N 条** 其他可选的生产路径
-- 标记显示在设备名称之后，如：`铜锭 x 2.0/秒 [+2]`
-- 使用 `alt <节点编号>` 命令可以查看并切换到这些替代路径
-
-### 路径切换流程
-1. 计算生产链后，系统显示主路径和带标记的节点
-2. 输入 `la` 查看所有带标记的节点及其编号
-3. 输入 `alt <编号>` 查看该节点的所有替代路径
-4. 选择要切换的路径，系统显示设备数量变化
-5. 确认后重新显示生产链（新的主路径）
-
-### 路径对比信息
-切换路径时，系统会显示：
-- **设备数量变化**：增加或减少的设备数
-- **效率评分**：基于设备数的综合评分（0-1）
-- **优缺点分析**：设备数量、原料种类、设备种类等维度
+- 最初计划 GUI 版本（tkinter），后改为终端版本
+- 添加基于 Flask 的 Web 浏览器界面
+- 重构为 IO 抽象层架构，终端和 Web 共享业务逻辑
+- 新增配方管理增删改查功能
+- 新增路径对比功能（主路径选择、节点标记、路径切换）

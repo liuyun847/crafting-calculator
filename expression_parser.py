@@ -66,8 +66,11 @@ def evaluate_math_expression(expression: str) -> float:
     Raises:
         ValueError: 当表达式格式错误或无法计算时
     """
+    # 移除空格，标准化输入
+    expression = expression.replace(' ', '')
+    
     # 验证表达式格式，允许字母函数名
-    if not re.match(r'^[0-9a-zA-Z+\-*/().]+$', expression):
+    if not re.match(r'^[0-9a-zA-Z+\-*/().,]+$', expression):
         raise ValueError(f"无效的数学表达式: {expression}")
     
     try:

@@ -1,0 +1,496 @@
+{% extends "base.html" %}
+
+{% block title %}配方管理 - 合成计算器{% endblock %}
+
+{% block content %}
+<div class="recipe-management-page">
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <h1 class="card-title">配方管理</h1>
+                <p class="card-subtitle">查看、添加、修改和删除配方</p>
+            </div>
+            <button class="btn btn-primary" id="addRecipeBtn">
+                <span>➕</span> 添加配方
+            </button>
+        </div>
+        <div class="card-body">
+            {% if not current_game %}
+            <div class="alert alert-warning">
+                <p>您尚未选择配方文件，请先选择配方文件。</p>
+                <a href="/select-game" class="btn btn-primary mt-2">选择配方文件</a>
+            </div>
+            {% else %}
+            <!-- 搜索框 -->
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="recipeSearch" placeholder="搜索配方名称、设备或物品...">
+            </div>
+
+            <!-- 配方列表 -->
+            <div id="recipeListContainer">
+                <div class="table-container">
+                    <table class="table" id="recipeTable">
+                        <thead>
+                            <tr>
+                                <th>配方名称</th>
+                                <th>设备</th>
+                                <th>输出物品</th>
+                                <th>输入物品</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 分页 -->
+                <div class="pagination" id="pagination">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+
+            <!-- 空状态 -->
+            <div id="emptyState" class="empty-state hidden">
+                <div class="empty-icon">📝</div>
+                <p>暂无配方</p>
+                <p class="empty-hint">点击"添加配方"按钮创建第一个配方</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 添加/编辑配方模态框 -->
+<div class="modal-overlay" id="recipeModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3 class="modal-title" id="recipeModalTitle">添加配方</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="recipeForm">
+                <input type="hidden" id="recipeOriginalName">
+
+                <div class="form-group">
+                    <label class="form-label" for="recipeName">配方名称 *</label>
+                    <input type="text" class="form-input" id="recipeName" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="deviceName">设备名称 *</label>
+                    <input type="text" class="form-input" id="deviceName" required>
+                </div>
+
+                <!-- 输出物品 -->
+                <div class="form-section">
+                    <h4>输出物品</h4>
+                    <div id="outputsList" class="items-list">
+                        <!-- 动态生成 -->
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="addOutputBtn">
+                        <span>➕</span> 添加输出物品
+                    </button>
+                </div>
+
+                <!-- 输入物品 -->
+                <div class="form-section">
+                    <h4>输入物品</h4>
+                    <div id="inputsList" class="items-list">
+                        <!-- 动态生成 -->
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="addInputBtn">
+                        <span>➕</span> 添加输入物品
+                    </button>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="cancelRecipe">取消</button>
+            <button type="button" class="btn btn-primary" id="saveRecipe">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">确认删除</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>您确定要删除配方 "<strong id="deleteRecipeName"></strong>" 吗？</p>
+            <p class="text-secondary">此操作不可撤销。</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="cancelDelete">取消</button>
+            <button type="button" class="btn btn-danger" id="confirmDelete">删除</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.modal-lg {
+    max-width: 700px;
+}
+
+.form-section {
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-md);
+    background-color: var(--color-background);
+    border-radius: var(--border-radius);
+}
+
+.form-section h4 {
+    margin-bottom: var(--spacing-md);
+    font-size: 1rem;
+}
+
+.items-list {
+    margin-bottom: var(--spacing-md);
+}
+
+.item-row {
+    display: grid;
+    grid-template-columns: 1fr 120px 40px;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+    align-items: center;
+}
+
+.item-row input {
+    width: 100%;
+}
+
+.remove-item-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.25rem;
+    color: var(--color-error);
+    padding: var(--spacing-xs);
+}
+
+.remove-item-btn:hover {
+    opacity: 0.7;
+}
+
+.alert {
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    background-color: rgba(245, 158, 11, 0.1);
+    border: 1px solid var(--color-warning);
+}
+
+.alert p {
+    margin: 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--color-text-secondary);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: var(--spacing-md);
+}
+
+.empty-hint {
+    font-size: 0.875rem;
+    margin-top: var(--spacing-sm);
+}
+
+.text-secondary {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+}
+
+.mt-2 {
+    margin-top: var(--spacing-sm);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentPage = 1;
+    let currentSearch = '';
+    let deleteTarget = null;
+    let isEditing = false;
+
+    // 加载配方列表
+    async function loadRecipes(page = 1, search = '') {
+        try {
+            const result = await API.getRecipes(page, 20, search);
+            if (result.success) {
+                renderRecipes(result.recipes);
+                renderPagination(result.page, result.total_pages, result.total);
+
+                // 显示/隐藏空状态
+                const emptyState = document.getElementById('emptyState');
+                const listContainer = document.getElementById('recipeListContainer');
+                if (result.total === 0) {
+                    emptyState.classList.remove('hidden');
+                    listContainer.classList.add('hidden');
+                } else {
+                    emptyState.classList.add('hidden');
+                    listContainer.classList.remove('hidden');
+                }
+            }
+        } catch (error) {
+            showToast('错误', '加载配方列表失败', 'error');
+        }
+    }
+
+    // 渲染配方列表
+    function renderRecipes(recipes) {
+        const tbody = document.querySelector('#recipeTable tbody');
+        tbody.innerHTML = recipes.map(recipe => {
+            const outputs = Object.entries(recipe.outputs || {})
+                .map(([name, data]) => `${escapeHtml(name)}: ${formatNumber(data.amount || data)}`)
+                .join('<br>');
+            const inputs = Object.entries(recipe.inputs || {})
+                .map(([name, data]) => `${escapeHtml(name)}: ${formatNumber(data.amount || data)}`)
+                .join('<br>');
+
+            return `
+                <tr data-recipe="${escapeHtml(recipe.name)}">
+                    <td>${escapeHtml(recipe.name)}</td>
+                    <td>${escapeHtml(recipe.device)}</td>
+                    <td>${outputs || '-'}</td>
+                    <td>${inputs || '-'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary edit-btn" data-recipe="${escapeHtml(recipe.name)}">编辑</button>
+                        <button class="btn btn-sm btn-danger delete-btn" data-recipe="${escapeHtml(recipe.name)}">删除</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        // 绑定编辑和删除按钮事件
+        tbody.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', () => editRecipe(btn.dataset.recipe));
+        });
+
+        tbody.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', () => confirmDelete(btn.dataset.recipe));
+        });
+    }
+
+    // 渲染分页
+    function renderPagination(currentPage, totalPages, total) {
+        const pagination = document.getElementById('pagination');
+        if (totalPages <= 1) {
+            pagination.innerHTML = '';
+            return;
+        }
+
+        let html = '';
+
+        // 上一页
+        html += `<button class="pagination-btn" ${currentPage === 1 ? 'disabled' : ''} data-page="${currentPage - 1}">上一页</button>`;
+
+        // 页码
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+            } else if (i === currentPage - 3 || i === currentPage + 3) {
+                html += `<span class="pagination-ellipsis">...</span>`;
+            }
+        }
+
+        // 下一页
+        html += `<button class="pagination-btn" ${currentPage === totalPages ? 'disabled' : ''} data-page="${currentPage + 1}">下一页</button>`;
+
+        pagination.innerHTML = html;
+
+        // 绑定分页按钮事件
+        pagination.querySelectorAll('.pagination-btn:not([disabled])').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentPage = parseInt(btn.dataset.page);
+                loadRecipes(currentPage, currentSearch);
+            });
+        });
+    }
+
+    // 搜索功能
+    document.getElementById('recipeSearch')?.addEventListener('input', function() {
+        currentSearch = this.value;
+        currentPage = 1;
+        loadRecipes(currentPage, currentSearch);
+    });
+
+    // 添加配方按钮
+    document.getElementById('addRecipeBtn')?.addEventListener('click', () => {
+        isEditing = false;
+        document.getElementById('recipeModalTitle').textContent = '添加配方';
+        document.getElementById('recipeForm').reset();
+        document.getElementById('recipeOriginalName').value = '';
+        document.getElementById('outputsList').innerHTML = '';
+        document.getElementById('inputsList').innerHTML = '';
+        addItemRow('outputs');
+        addItemRow('inputs');
+        document.getElementById('recipeModal').classList.add('active');
+    });
+
+    // 添加输出物品
+    document.getElementById('addOutputBtn')?.addEventListener('click', () => {
+        addItemRow('outputs');
+    });
+
+    // 添加输入物品
+    document.getElementById('addInputBtn')?.addEventListener('click', () => {
+        addItemRow('inputs');
+    });
+
+    // 添加物品行
+    function addItemRow(type, name = '', amount = '') {
+        const container = document.getElementById(type + 'List');
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.innerHTML = `
+            <input type="text" class="form-input item-name" placeholder="物品名称" value="${escapeHtml(name)}" required>
+            <input type="text" class="form-input item-amount" placeholder="数量" value="${amount}" required>
+            <button type="button" class="remove-item-btn" title="删除">🗑️</button>
+        `;
+
+        row.querySelector('.remove-item-btn').addEventListener('click', () => {
+            row.remove();
+        });
+
+        container.appendChild(row);
+    }
+
+    // 编辑配方
+    async function editRecipe(recipeName) {
+        try {
+            const result = await API.getRecipe(recipeName);
+            if (result.success) {
+                isEditing = true;
+                document.getElementById('recipeModalTitle').textContent = '编辑配方';
+                document.getElementById('recipeOriginalName').value = result.name;
+                document.getElementById('recipeName').value = result.name;
+                document.getElementById('deviceName').value = result.device;
+
+                // 清空并填充输出物品
+                document.getElementById('outputsList').innerHTML = '';
+                Object.entries(result.outputs).forEach(([name, data]) => {
+                    const amount = typeof data === 'object' ? data.amount : data;
+                    addItemRow('outputs', name, amount);
+                });
+
+                // 清空并填充输入物品
+                document.getElementById('inputsList').innerHTML = '';
+                Object.entries(result.inputs).forEach(([name, data]) => {
+                    const amount = typeof data === 'object' ? data.amount : data;
+                    addItemRow('inputs', name, amount);
+                });
+
+                document.getElementById('recipeModal').classList.add('active');
+            }
+        } catch (error) {
+            showToast('错误', '加载配方详情失败', 'error');
+        }
+    }
+
+    // 保存配方
+    document.getElementById('saveRecipe')?.addEventListener('click', async () => {
+        const name = document.getElementById('recipeName').value.trim();
+        const device = document.getElementById('deviceName').value.trim();
+        const originalName = document.getElementById('recipeOriginalName').value;
+
+        if (!name || !device) {
+            showToast('错误', '请填写配方名称和设备名称', 'error');
+            return;
+        }
+
+        // 收集输出物品
+        const outputs = {};
+        document.querySelectorAll('#outputsList .item-row').forEach(row => {
+            const itemName = row.querySelector('.item-name').value.trim();
+            const amount = parseFloat(row.querySelector('.item-amount').value);
+            if (itemName && !isNaN(amount)) {
+                outputs[itemName] = { amount, expression: String(amount) };
+            }
+        });
+
+        // 收集输入物品
+        const inputs = {};
+        document.querySelectorAll('#inputsList .item-row').forEach(row => {
+            const itemName = row.querySelector('.item-name').value.trim();
+            const amount = parseFloat(row.querySelector('.item-amount').value);
+            if (itemName && !isNaN(amount)) {
+                inputs[itemName] = { amount, expression: String(amount) };
+            }
+        });
+
+        if (Object.keys(outputs).length === 0) {
+            showToast('错误', '请至少添加一个输出物品', 'error');
+            return;
+        }
+
+        try {
+            let result;
+            if (isEditing && originalName) {
+                result = await API.updateRecipe(originalName, { name, device, inputs, outputs });
+            } else {
+                result = await API.createRecipe({ name, device, inputs, outputs });
+            }
+
+            if (result.success) {
+                showToast('成功', result.message, 'success');
+                document.getElementById('recipeModal').classList.remove('active');
+                loadRecipes(currentPage, currentSearch);
+            } else {
+                showToast('错误', result.error || '保存失败', 'error');
+            }
+        } catch (error) {
+            showToast('错误', '请求失败，请重试', 'error');
+        }
+    });
+
+    // 确认删除
+    function confirmDelete(recipeName) {
+        deleteTarget = recipeName;
+        document.getElementById('deleteRecipeName').textContent = recipeName;
+        document.getElementById('deleteModal').classList.add('active');
+    }
+
+    // 执行删除
+    document.getElementById('confirmDelete')?.addEventListener('click', async () => {
+        if (!deleteTarget) return;
+
+        try {
+            const result = await API.deleteRecipe(deleteTarget);
+            if (result.success) {
+                showToast('成功', result.message, 'success');
+                document.getElementById('deleteModal').classList.remove('active');
+                loadRecipes(currentPage, currentSearch);
+            } else {
+                showToast('错误', result.error || '删除失败', 'error');
+            }
+        } catch (error) {
+            showToast('错误', '请求失败，请重试', 'error');
+        }
+
+        deleteTarget = null;
+    });
+
+    // 关闭模态框
+    document.querySelectorAll('.modal-close, #cancelRecipe, #cancelDelete').forEach(btn => {
+        btn?.addEventListener('click', function() {
+            this.closest('.modal-overlay').classList.remove('active');
+        });
+    });
+
+    // 初始加载
+    {% if current_game %}
+    loadRecipes();
+    {% endif %}
+});
+</script>
+{% endblock %}

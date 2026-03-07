@@ -718,20 +718,5 @@
         "expression": "5"
       }
     }
-  },
-  "玻璃生产_2": {
-    "device": "组装机",
-    "inputs": {
-      "沙子": {
-        "amount": 10.0,
-        "expression": "10"
-      }
-    },
-    "outputs": {
-      "玻璃": {
-        "amount": 10.0,
-        "expression": "10"
-      }
-    }
   }
 }

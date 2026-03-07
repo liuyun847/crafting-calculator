@@ -68,80 +68,86 @@ class ApplicationController:
         command = command.strip()
 
         if self.state == "main_menu":
-            return self._handle_main_menu(command)
+            result = self._handle_main_menu(command)
         elif self.state == "select_game":
-            return self._handle_select_game(command)
+            result = self._handle_select_game(command)
         elif self.state == "calculate_item":
-            return self._handle_calculate_item(command)
+            result = self._handle_calculate_item(command)
         elif self.state == "calculate_rate":
-            return self._handle_calculate_rate(command)
+            result = self._handle_calculate_rate(command)
         elif self.state == "add_recipe_device":
-            return self._handle_add_recipe_device(command)
+            result = self._handle_add_recipe_device(command)
         elif self.state == "add_recipe_device_search":
-            return self._handle_add_recipe_device_search(command)
+            result = self._handle_add_recipe_device_search(command)
         elif self.state == "add_recipe_outputs":
-            return self._handle_add_recipe_outputs(command)
+            result = self._handle_add_recipe_outputs(command)
         elif self.state == "add_recipe_output_search":
-            return self._handle_add_recipe_output_search(command)
+            result = self._handle_add_recipe_output_search(command)
         elif self.state == "add_recipe_output_amount":
-            return self._handle_add_recipe_output_amount(command)
+            result = self._handle_add_recipe_output_amount(command)
         elif self.state == "add_recipe_more_outputs":
-            return self._handle_add_recipe_more_outputs(command)
+            result = self._handle_add_recipe_more_outputs(command)
         elif self.state == "add_recipe_inputs":
-            return self._handle_add_recipe_inputs(command)
+            result = self._handle_add_recipe_inputs(command)
         elif self.state == "add_recipe_input_search":
-            return self._handle_add_recipe_input_search(command)
+            result = self._handle_add_recipe_input_search(command)
         elif self.state == "add_recipe_input_amount":
-            return self._handle_add_recipe_input_amount(command)
+            result = self._handle_add_recipe_input_amount(command)
         elif self.state == "add_recipe_more_inputs":
-            return self._handle_add_recipe_more_inputs(command)
+            result = self._handle_add_recipe_more_inputs(command)
         elif self.state == "add_recipe_confirm":
-            return self._handle_add_recipe_confirm(command)
+            result = self._handle_add_recipe_confirm(command)
         elif self.state == "recipe_management":
-            return self._handle_recipe_management(command)
+            result = self._handle_recipe_management(command)
         elif self.state == "modify_recipe_select":
-            return self._handle_modify_recipe_select(command)
+            result = self._handle_modify_recipe_select(command)
         elif self.state == "modify_recipe_menu":
-            return self._handle_modify_recipe_menu(command)
+            result = self._handle_modify_recipe_menu(command)
         elif self.state == "modify_recipe_device":
-            return self._handle_modify_recipe_device(command)
+            result = self._handle_modify_recipe_device(command)
         elif self.state == "modify_input_items_menu":
-            return self._handle_modify_items_menu(command, "input")
+            result = self._handle_modify_items_menu(command, "input")
         elif self.state == "modify_output_items_menu":
-            return self._handle_modify_items_menu(command, "output")
+            result = self._handle_modify_items_menu(command, "output")
         elif self.state == "modify_input_add_name":
-            return self._handle_modify_input_add_name(command)
+            result = self._handle_modify_input_add_name(command)
         elif self.state == "modify_input_add_amount":
-            return self._handle_modify_input_add_amount(command)
+            result = self._handle_modify_input_add_amount(command)
         elif self.state == "modify_output_add_name":
-            return self._handle_modify_output_add_name(command)
+            result = self._handle_modify_output_add_name(command)
         elif self.state == "modify_output_add_amount":
-            return self._handle_modify_output_add_amount(command)
+            result = self._handle_modify_output_add_amount(command)
         elif self.state == "modify_input_delete":
-            return self._handle_modify_input_delete(command)
+            result = self._handle_modify_input_delete(command)
         elif self.state == "modify_output_delete":
-            return self._handle_modify_output_delete(command)
+            result = self._handle_modify_output_delete(command)
         elif self.state == "modify_input_modify":
-            return self._handle_modify_input_modify(command)
+            result = self._handle_modify_input_modify(command)
         elif self.state == "modify_output_modify":
-            return self._handle_modify_output_modify(command)
+            result = self._handle_modify_output_modify(command)
         elif self.state == "modify_input_modify_amount":
-            return self._handle_modify_input_modify_amount(command)
+            result = self._handle_modify_input_modify_amount(command)
         elif self.state == "modify_output_modify_amount":
-            return self._handle_modify_output_modify_amount(command)
+            result = self._handle_modify_output_modify_amount(command)
         elif self.state == "modify_recipe_confirm_save":
-            return self._handle_modify_recipe_confirm_save(command)
+            result = self._handle_modify_recipe_confirm_save(command)
         elif self.state == "delete_recipe_select":
-            return self._handle_delete_recipe_select(command)
+            result = self._handle_delete_recipe_select(command)
         elif self.state == "delete_recipe_by_index":
-            return self._handle_delete_recipe_by_index(command)
+            result = self._handle_delete_recipe_by_index(command)
         elif self.state == "delete_recipe_by_name":
-            return self._handle_delete_recipe_by_name(command)
+            result = self._handle_delete_recipe_by_name(command)
         elif self.state == "delete_recipe_confirm":
-            return self._handle_delete_recipe_confirm(command)
+            result = self._handle_delete_recipe_confirm(command)
         else:
             self.state = "main_menu"
-            return {"output": "状态错误，已返回主菜单", "prompt": "请选择操作 (1-5): "}
+            result = {"output": "状态错误，已返回主菜单", "prompt": "请选择操作 (1-5): "}
+
+        # 将输出写入IO缓冲区（用于WebIO）
+        if result.get("output"):
+            self.io.print(result["output"])
+
+        return result
 
     def _initialize(self) -> None:
         """初始化应用程序"""
@@ -776,9 +782,7 @@ class ApplicationController:
             return
 
         self.io.print("\n--- 配置输入物品 ---")
-        inputs = self._input_items_list(
-            "输入", item_freq, existing_names=set(outputs.keys())
-        )
+        inputs = self._input_items_list("输入", item_freq)
 
         existing_recipes = self.recipe_manager.get_all_recipes()
         recipe_name = self._generate_recipe_id(outputs, existing_recipes)
@@ -1477,16 +1481,37 @@ class ApplicationController:
 
     def _handle_main_menu(self, command: str) -> Dict[str, Any]:
         """处理主菜单命令（Web模式）"""
+        # 如果命令为空，尝试从IO读取输入（仅用于WebIO模式）
+        if not command:
+            from io_interface import WebIO
+            if isinstance(self.io, WebIO):
+                try:
+                    command = self.io.input("请选择操作 (1-6): ").strip()
+                except ValueError:
+                    # 输入队列为空，返回提示
+                    return {"output": "", "prompt": "请选择操作 (1-6): "}
+            else:
+                # TerminalIO模式下，空命令视为无效
+                return {
+                    "output": "选择无效，请输入1-6之间的数字",
+                    "prompt": "请选择操作 (1-6): ",
+                }
+
         if command in ["help", "?"]:
             return {"output": self._print_help(), "prompt": "请选择操作 (1-5): "}
 
-        if command in ["5", "exit", "quit"]:
+        if command in ["exit", "quit"]:
             self._reset()
             return {"output": "会话已重置", "prompt": "请选择操作 (1-5): "}
 
         if command == "reset":
             self._reset()
             return {"output": "会话已重置", "prompt": "请选择操作 (1-5): "}
+
+        if command == "5":
+            # 返回主菜单，保留数据和状态
+            self.state = "main_menu"
+            return {"output": "", "prompt": "请选择操作 (1-5): "}
 
         if command == "1" or command.startswith("1 "):
             parts = command.split(maxsplit=1)
@@ -1579,6 +1604,11 @@ class ApplicationController:
 
     def _handle_select_game(self, command: str) -> Dict[str, Any]:
         """处理选择配方文件"""
+        # 输入 "5" 返回主菜单
+        if command == "5":
+            self.state = "main_menu"
+            return {"output": "", "prompt": "请选择操作 (1-5): "}
+
         games = self.pending_data.get("games", [])
         try:
             index = int(command) - 1
@@ -2675,8 +2705,6 @@ class ApplicationController:
             return {"output": "物品名称不能为空", "prompt": "请输入输入物品名称: "}
 
         item_freq = self.pending_data.get("item_freq", [])
-        existing_items = self.pending_data.get("existing_items", set())
-        existing_items.update(self.pending_data["outputs"].keys())
 
         try:
             index = int(command.strip())

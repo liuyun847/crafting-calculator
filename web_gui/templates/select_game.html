@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}选择配方 - 合成计算器{% endblock %}
+
+{% block content %}
+<div class="select-game-page">
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <h1 class="card-title">选择配方文件</h1>
+                <p class="card-subtitle">选择要使用的游戏配方文件</p>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- 搜索框 -->
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="gameSearch" placeholder="搜索配方文件...">
+            </div>
+
+            <!-- 配方文件列表 -->
+            <div class="games-grid" id="gamesGrid">
+                {% for game in games %}
+                <div class="game-card {% if game == current_game %}selected{% endif %}" data-game="{{ game }}">
+                    <div class="game-card-icon">🎮</div>
+                    <div class="game-card-name">{{ game }}</div>
+                    <div class="game-card-desc">
+                        {% if game == current_game %}
+                            当前选中
+                        {% else %}
+                            点击选择
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if games|length == 0 %}
+            <div class="empty-state">
+                <div class="empty-icon">📁</div>
+                <p>暂无可用配方文件</p>
+                <p class="empty-hint">请在 recipes 目录中添加配方文件</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.empty-state {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--color-text-secondary);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: var(--spacing-md);
+}
+
+.empty-hint {
+    font-size: 0.875rem;
+    margin-top: var(--spacing-sm);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const gameSearch = document.getElementById('gameSearch');
+    const gamesGrid = document.getElementById('gamesGrid');
+    const gameCards = gamesGrid.querySelectorAll('.game-card');
+
+    // 搜索功能
+    gameSearch.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        gameCards.forEach(card => {
+            const gameName = card.dataset.game.toLowerCase();
+            if (gameName.includes(searchTerm)) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+
+    // 选择配方文件
+    gameCards.forEach(card => {
+        card.addEventListener('click', async function() {
+            const gameName = this.dataset.game;
+
+            // 如果已经是当前选中的，不做任何操作
+            if (this.classList.contains('selected')) {
+                showToast('提示', '该配方文件已经是当前选中状态', 'info');
+                return;
+            }
+
+            try {
+                const result = await API.selectGame(gameName);
+                if (result.success) {
+                    showToast('成功', result.message, 'success');
+                    // 更新选中状态
+                    gameCards.forEach(c => {
+                        c.classList.remove('selected');
+                        c.querySelector('.game-card-desc').textContent = '点击选择';
+                    });
+                    this.classList.add('selected');
+                    this.querySelector('.game-card-desc').textContent = '当前选中';
+
+                    // 延迟刷新页面以更新全局状态
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    showToast('错误', result.error || '选择失败', 'error');
+                }
+            } catch (error) {
+                showToast('错误', '请求失败，请重试', 'error');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

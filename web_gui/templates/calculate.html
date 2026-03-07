@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+
+{% block title %}计算生产链 - 合成计算器{% endblock %}
+
+{% block content %}
+<div class="calculate-page">
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <h1 class="card-title">计算生产链</h1>
+                <p class="card-subtitle">输入目标物品和生产速率，计算完整的生产链</p>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if not current_game %}
+            <div class="alert alert-warning">
+                <p>您尚未选择配方文件，请先选择配方文件。</p>
+                <a href="/select-game" class="btn btn-primary mt-2">选择配方文件</a>
+            </div>
+            {% else %}
+            <!-- 计算表单 -->
+            <form id="calculateForm" class="calculate-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="targetItem">目标物品</label>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" class="form-input" id="targetItem" placeholder="输入物品名称..." required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="targetRate">生产速率</label>
+                        <input type="text" class="form-input" id="targetRate" placeholder="如: 15/min" required>
+                        <small class="form-hint">支持格式: 15/min, 2.5/s, 100/h</small>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <span>🧮</span> 开始计算
+                    </button>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 计算结果区域 -->
+    <div id="resultSection" class="hidden">
+        <!-- 统计概览 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">🔧</div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalDevices">-</div>
+                    <div class="stat-label">总设备数</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📦</div>
+                <div class="stat-content">
+                    <div class="stat-value" id="rawMaterialCount">-</div>
+                    <div class="stat-label">基础原料种类</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🏭</div>
+                <div class="stat-content">
+                    <div class="stat-value" id="deviceTypeCount">-</div>
+                    <div class="stat-label">设备类型数</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 合成树 -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">合成树</h2>
+                <span class="badge" id="alternativesHint">点击带有 [+N] 标记的节点可切换路径</span>
+            </div>
+            <div class="card-body">
+                <div class="crafting-tree" id="craftingTree">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 基础原料消耗 -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">基础原料消耗</h2>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="table" id="rawMaterialsTable">
+                        <thead>
+                            <tr>
+                                <th>物品名称</th>
+                                <th>消耗速率</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设备统计 -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">设备统计</h2>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="table" id="deviceStatsTable">
+                        <thead>
+                            <tr>
+                                <th>设备名称</th>
+                                <th>数量</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 路径切换模态框 -->
+<div class="modal-overlay" id="alternativesModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">选择替代路径</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="alternativesInfo"></p>
+            <div id="alternativesList" class="alternatives-list">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="closeAlternatives">取消</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.calculate-form {
+    margin-bottom: var(--spacing-lg);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.form-hint {
+    display: block;
+    margin-top: var(--spacing-xs);
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+}
+
+.form-actions {
+    text-align: center;
+}
+
+.alert {
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    background-color: rgba(245, 158, 11, 0.1);
+    border: 1px solid var(--color-warning);
+}
+
+.alert p {
+    margin: 0;
+}
+
+.badge {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    background-color: var(--color-background);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--border-radius);
+}
+
+.alternatives-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+}
+
+.alternative-item {
+    padding: var(--spacing-md);
+    border: 2px solid var(--color-border);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.alternative-item:hover {
+    border-color: var(--color-primary);
+    background-color: rgba(37, 99, 235, 0.05);
+}
+
+.alternative-item.selected {
+    border-color: var(--color-primary);
+    background-color: rgba(37, 99, 235, 0.1);
+}
+
+.alternative-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+}
+
+.alternative-name {
+    font-weight: 600;
+}
+
+.alternative-devices {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const items = {{ items | tojson }};
+    let currentCalculation = null;
+    let autocomplete = null;
+
+    // 初始化自动补全
+    if (document.getElementById('targetItem')) {
+        autocomplete = new Autocomplete('targetItem', {
+            data: items,
+            onSelect: function(value) {
+                console.log('Selected:', value);
+            }
+        });
+    }
+
+    // 计算表单提交
+    const calculateForm = document.getElementById('calculateForm');
+    calculateForm?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const targetItem = document.getElementById('targetItem').value.trim();
+        const targetRate = document.getElementById('targetRate').value.trim();
+
+        if (!targetItem || !targetRate) {
+            showToast('错误', '请填写完整信息', 'error');
+            return;
+        }
+
+        try {
+            const result = await API.calculate(targetItem, targetRate);
+            if (result.success) {
+                currentCalculation = result;
+                displayResults(result);
+                showToast('成功', '计算完成', 'success');
+            } else {
+                showToast('错误', result.error || '计算失败', 'error');
+            }
+        } catch (error) {
+            showToast('错误', '请求失败，请重试', 'error');
+        }
+    });
+
+    // 显示计算结果
+    function displayResults(result) {
+        document.getElementById('resultSection').classList.remove('hidden');
+
+        // 更新统计
+        document.getElementById('totalDevices').textContent = formatNumber(result.total_devices);
+        document.getElementById('rawMaterialCount').textContent = Object.keys(result.raw_materials).length;
+        document.getElementById('deviceTypeCount').textContent = Object.keys(result.device_stats).length;
+
+        // 渲染合成树
+        renderCraftingTree(result.main_path, result.marked_nodes);
+
+        // 渲染基础原料
+        renderRawMaterials(result.raw_materials);
+
+        // 渲染设备统计
+        renderDeviceStats(result.device_stats);
+
+        // 滚动到结果区域
+        document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // 渲染合成树
+    function renderCraftingTree(node, markedNodes) {
+        const container = document.getElementById('craftingTree');
+        const markedMap = {};
+        markedNodes.forEach(n => {
+            markedMap[n.item_name] = n.alternative_count;
+        });
+
+        function buildTreeHTML(node) {
+            const hasAlts = markedMap[node.item_name] > 0;
+            const altCount = markedMap[node.item_name];
+
+            let html = '<div class="tree-node">';
+            html += `<div class="tree-node-content ${hasAlts ? 'has-alternatives' : ''}" data-item="${escapeHtml(node.item_name)}">`;
+            html += `<div class="tree-node-name">${escapeHtml(node.item_name)}</div>`;
+            html += `<div class="tree-node-rate">${formatRate(node.amount)}</div>`;
+            if (node.device) {
+                html += `<div class="tree-node-device">${escapeHtml(node.device)} × ${formatNumber(node.device_count)}</div>`;
+            }
+            if (hasAlts) {
+                html += `<span class="tree-node-alternatives">+${altCount}</span>`;
+            }
+            html += '</div>';
+
+            if (node.children && node.children.length > 0) {
+                html += '<div class="tree-children">';
+                node.children.forEach(child => {
+                    html += buildTreeHTML(child);
+                });
+                html += '</div>';
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        container.innerHTML = buildTreeHTML(node);
+
+        // 绑定节点点击事件
+        container.querySelectorAll('.tree-node-content.has-alternatives').forEach(nodeEl => {
+            nodeEl.addEventListener('click', function() {
+                const itemName = this.dataset.item;
+                showAlternatives(itemName);
+            });
+        });
+    }
+
+    // 渲染基础原料
+    function renderRawMaterials(materials) {
+        const tbody = document.querySelector('#rawMaterialsTable tbody');
+        tbody.innerHTML = Object.entries(materials)
+            .map(([name, rate]) => `
+                <tr>
+                    <td>${escapeHtml(name)}</td>
+                    <td>${formatRate(rate)}</td>
+                </tr>
+            `).join('');
+    }
+
+    // 渲染设备统计
+    function renderDeviceStats(stats) {
+        const tbody = document.querySelector('#deviceStatsTable tbody');
+        tbody.innerHTML = Object.entries(stats)
+            .map(([name, count]) => `
+                <tr>
+                    <td>${escapeHtml(name)}</td>
+                    <td>${formatNumber(count)}</td>
+                </tr>
+            `).join('');
+    }
+
+    // 显示替代路径
+    async function showAlternatives(itemName) {
+        if (!currentCalculation) return;
+
+        const modal = document.getElementById('alternativesModal');
+        const info = document.getElementById('alternativesInfo');
+        const list = document.getElementById('alternativesList');
+
+        info.textContent = `物品 "${itemName}" 的替代生产路径：`;
+
+        try {
+            const result = await API.getAlternatives(
+                '{{ current_game }}',
+                currentCalculation.target_item,
+                currentCalculation.target_rate,
+                itemName
+            );
+
+            if (result.success && result.alternatives.length > 0) {
+                list.innerHTML = result.alternatives.map((alt, index) => `
+                    <div class="alternative-item" data-index="${index}">
+                        <div class="alternative-header">
+                            <span class="alternative-name">${escapeHtml(alt.recipe_name || '未知配方')}</span>
+                            <span class="alternative-devices">${formatNumber(alt.device_count)} 台设备</span>
+                        </div>
+                        <div class="alternative-chain">
+                            ${alt.node_chain.map(n => escapeHtml(n.item_name)).join(' → ')}
+                        </div>
+                    </div>
+                `).join('');
+
+                modal.classList.add('active');
+            } else {
+                showToast('提示', '暂无替代路径', 'info');
+            }
+        } catch (error) {
+            showToast('错误', '获取替代路径失败', 'error');
+        }
+    }
+
+    // 关闭模态框
+    document.querySelector('.modal-close')?.addEventListener('click', function() {
+        document.getElementById('alternativesModal').classList.remove('active');
+    });
+
+    document.getElementById('closeAlternatives')?.addEventListener('click', function() {
+        document.getElementById('alternativesModal').classList.remove('active');
+    });
+});
+</script>
+{% endblock %}
