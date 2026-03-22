@@ -809,7 +809,6 @@ class CraftingCalculator:
             # 生成所有可能的组合路径（添加优化参数）
             combined_paths = self._combine_paths(
                 input_paths_list,
-                max_paths=100,
                 max_path_length=50
             )
 
@@ -822,7 +821,7 @@ class CraftingCalculator:
 
     def _combine_paths(
         self, paths_list: List[List[List[Dict[str, Any]]]],
-        max_paths: int = 100, max_path_length: int = 50
+        max_paths: Optional[int] = None, max_path_length: int = 50
     ) -> List[List[Dict[str, Any]]]:
         """
         组合多条路径列表，生成所有可能的路径组合（优化版）
@@ -830,7 +829,7 @@ class CraftingCalculator:
 
         Args:
             paths_list: 路径列表的列表
-            max_paths: 最大返回路径数量，超过时提前终止
+            max_paths: 最大返回路径数量，超过时提前终止，None 表示无限制
             max_path_length: 单条路径最大长度，超过时剪枝
 
         Returns:
@@ -862,10 +861,10 @@ class CraftingCalculator:
                         seen_paths.add(path_key)
                     temp.append(new_path)
                     
-                    # 提前终止：达到最大路径数量
-                    if len(temp) >= max_paths:
+                    # 提前终止：达到最大路径数量（仅当设置了 max_paths 时）
+                    if max_paths is not None and len(temp) >= max_paths:
                         break
-                if len(temp) >= max_paths:
+                if max_paths is not None and len(temp) >= max_paths:
                     break
             
             result = temp
