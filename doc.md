@@ -30,6 +30,16 @@
 ├── expression_parser.py     # 表达式解析模块
 ├── data_manager.py         # 数据管理模块
 ├── config_manager.py       # 配置管理模块
+├── pyproject.toml          # 项目配置文件
+├── shared/                 # 共享模块目录
+│   ├── api/                # 公共API模块
+│   │   ├── __init__.py
+│   │   ├── calculation_api.py
+│   │   ├── recipe_api.py
+│   │   └── session.py
+│   ├── utils/              # 工具函数目录
+│   │   └── __init__.py
+│   └── __init__.py
 ├── tests/                  # 单元测试目录
 ├── web/                    # Web测试接口目录（终端风格）
 │   ├── web_server.py      # Flask Web服务器
@@ -66,6 +76,7 @@
 | `config_manager.py` | 配置持久化，记忆上次选择的配方文件 |
 | `web/web_server.py` | Flask Web服务器，RESTful API + 终端风格Web界面 |
 | `web_gui/app.py` | Flask Web GUI应用，现代化图形界面 |
+| `shared/api/` | 公共API模块，提供跨Web应用的共享会话管理、配方API、计算API等功能 |
 
 ### API 端点（web/web_server.py）
 
@@ -79,6 +90,7 @@ POST /api/recipes            # 创建新配方
 PUT  /api/recipes/<name>     # 更新配方
 DELETE /api/recipes/<name>   # 删除配方
 POST /api/calculate          # 计算生产链
+POST /api/calculate/switch-path  # 切换到指定路径
 GET  /api/calculate/alternatives  # 获取节点的可选路径
 GET  /api/paths/compare      # 对比多条路径
 POST /api/terminal           # 终端命令处理（主要测试接口）
@@ -107,6 +119,8 @@ PUT  /api/recipes/<name>     # 更新配方
 DELETE /api/recipes/<name>   # 删除配方
 POST /api/calculate          # 计算生产链
 GET  /api/calculate/alternatives  # 获取节点的可选路径
+POST /api/cache/clear        # 清除所有缓存
+GET  /api/cache/stats        # 获取缓存状态信息
 ```
 
 ## 运行方式
@@ -316,3 +330,8 @@ markers =
 - 重构为 IO 抽象层架构，终端和 Web 共享业务逻辑
 - 新增配方管理增删改查功能
 - 新增路径对比功能（主路径选择、节点标记、路径切换）
+- 新增 shared 目录，提取公共 API 模块，实现跨 Web 应用的共享功能
+- 添加 pyproject.toml 项目配置文件
+- 重构 Web 应用，统一使用共享的 API 模块
+- 新增缓存管理功能，提高计算性能
+- 新增路径切换相关的 API 端点
