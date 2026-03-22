@@ -754,7 +754,7 @@ class CraftingCalculator:
 
     @lru_cache(maxsize=128)
     def find_production_paths(
-        self, target_item: str, visited: Optional[FrozenSet[str]] = None
+        self, target_item: str, visited: FrozenSet[str] = frozenset()
     ) -> List[List[Dict[str, Any]]]:
         """
         查找所有可能的生产路径（已缓存）
@@ -766,8 +766,6 @@ class CraftingCalculator:
         Returns:
             生产路径列表，每条路径是配方的列表
         """
-        if visited is None:
-            visited = frozenset()
 
         # 避免循环
         if target_item in visited:

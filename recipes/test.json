@@ -1,0 +1,21 @@
+{
+  "熔炼": {
+    "device": "熔炉",
+    "inputs": {
+      "矿石": {
+        "amount": 1.0,
+        "expression": "1"
+      },
+      "煤炭": {
+        "amount": 0.5,
+        "expression": "0.5"
+      }
+    },
+    "outputs": {
+      "铁锭": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  }
+}
