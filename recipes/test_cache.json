@@ -1,0 +1,70 @@
+{
+  "熔炼铁锭": {
+    "device": "熔炉",
+    "inputs": {
+      "铁矿石": {
+        "amount": 1.0,
+        "expression": "1"
+      },
+      "煤炭": {
+        "amount": 0.5,
+        "expression": "0.5"
+      }
+    },
+    "outputs": {
+      "铁锭": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  },
+  "制作铁板": {
+    "device": "压延机",
+    "inputs": {
+      "铁锭": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    },
+    "outputs": {
+      "铁板": {
+        "amount": 2.0,
+        "expression": "2"
+      }
+    }
+  },
+  "制作铁棒": {
+    "device": "压延机",
+    "inputs": {
+      "铁锭": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    },
+    "outputs": {
+      "铁棒": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  },
+  "制作齿轮": {
+    "device": "组装机",
+    "inputs": {
+      "铁板": {
+        "amount": 2.0,
+        "expression": "2"
+      },
+      "铁棒": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    },
+    "outputs": {
+      "齿轮": {
+        "amount": 1.0,
+        "expression": "1"
+      }
+    }
+  }
+}

@@ -4,7 +4,6 @@
 测试副产品池的核心功能，包括收集、消耗、溢出检测等。
 """
 import pytest
-from typing import Dict, List, Tuple, Any
 from calculator import ByproductPool
 
 

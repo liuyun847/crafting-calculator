@@ -181,7 +181,8 @@ class TestWebGUI:
         ]
 
         for viewport in viewports:
-            page = browser.new_page(viewport={"width": viewport["width"], "height": viewport["height"]})
+            page = browser.new_page(
+                viewport={"width": viewport["width"], "height": viewport["height"]})
 
             try:
                 page.goto(server)
@@ -280,7 +281,8 @@ class TestAccessibility:
             page.keyboard.press("Tab")
 
             # 验证某个元素获得了焦点
-            active_element = page.evaluate("() => document.activeElement.tagName")
+            active_element = page.evaluate(
+                "() => document.activeElement.tagName")
             assert active_element != "BODY"  # 焦点应该不在body上
 
         finally:

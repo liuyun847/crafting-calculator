@@ -262,7 +262,8 @@ class TestPathComparisonIntegration:
         trees = calculator.calculate_production_chain("铁锭", 1.0)
 
         if len(trees) > 1:
-            device_counts = [calculator._count_total_devices(tree) for tree in trees]
+            device_counts = [calculator._count_total_devices(
+                tree) for tree in trees]
             assert device_counts[0] <= device_counts[1]
 
 

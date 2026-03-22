@@ -4,8 +4,6 @@
 测试 application_controller 模块的核心功能
 """
 
-import pytest
-from io_interface import TerminalIO, WebIO
 from application_controller import ApplicationController
 
 

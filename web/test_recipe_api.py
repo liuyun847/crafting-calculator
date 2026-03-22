@@ -6,6 +6,7 @@ import json
 
 BASE_URL = "http://127.0.0.1:5000"
 
+
 def test_get_recipes():
     """测试获取配方列表"""
     print("\n=== 测试 GET /api/recipes ===")
@@ -31,6 +32,7 @@ def test_get_recipes():
         data = resp.json()
         print(f"  搜索结果数: {data.get('total')}")
 
+
 def test_get_single_recipe():
     """测试获取单个配方"""
     print("\n=== 测试 GET /api/recipes/<recipe_name> ===")
@@ -51,6 +53,7 @@ def test_get_single_recipe():
     if resp.status_code == 404:
         data = resp.json()
         print(f"  错误信息: {data.get('error')}")
+
 
 def test_create_recipe():
     """测试创建配方"""
@@ -107,6 +110,7 @@ def test_create_recipe():
         data = resp.json()
         print(f"  错误: {data.get('error')}")
 
+
 def test_update_recipe():
     """测试更新配方"""
     print("\n=== 测试 PUT /api/recipes/<recipe_name> ===")
@@ -141,6 +145,7 @@ def test_update_recipe():
         data = resp.json()
         print(f"  错误: {data.get('error')}")
 
+
 def test_delete_recipe():
     """测试删除配方"""
     print("\n=== 测试 DELETE /api/recipes/<recipe_name> ===")
@@ -165,6 +170,7 @@ def test_delete_recipe():
     if resp.status_code == 404:
         data = resp.json()
         print(f"  错误: {data.get('error')}")
+
 
 def main():
     """主函数"""
@@ -193,6 +199,7 @@ def main():
         print(f"\n测试过程中出现错误: {e}")
         import traceback
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     main()

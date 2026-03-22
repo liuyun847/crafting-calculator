@@ -4,9 +4,19 @@
 该模块负责合成树构建、多路径选择和设备数量计算，支持特殊配方处理。
 """
 
-from typing import Dict, List, Any, Optional, Set, Tuple
+from typing import Dict, List, Any, Optional, Set, Tuple, FrozenSet
+from functools import lru_cache
 from data_manager import RecipeManager
 from enum import Enum
+from shared.utils import (
+    get_catalysts,
+    calculate_net_output_for_item,
+    is_same_item_recipe,
+    get_net_consumption,
+    get_net_production,
+    flatten_tree,
+    traverse_tree,
+)
 
 
 class RecipeType(Enum):
@@ -137,9 +147,7 @@ class RecipeAnalyzer:
         Returns:
             催化剂物品名称集合
         """
-        inputs = recipe.get("inputs", {})
-        outputs = recipe.get("outputs", {})
-        return set(inputs.keys()) & set(outputs.keys())
+        return get_catalysts(recipe)
 
     def calculate_net_output_for_item(self, recipe: Dict[str, Any], item: str) -> float:
         """
@@ -154,13 +162,7 @@ class RecipeAnalyzer:
         Returns:
             净产出量（负值表示净消耗）
         """
-        inputs = recipe.get("inputs", {})
-        outputs = recipe.get("outputs", {})
-
-        input_amount = inputs.get(item, {}).get("amount", 0.0)
-        output_amount = outputs.get(item, {}).get("amount", 0.0)
-
-        return output_amount - input_amount
+        return calculate_net_output_for_item(recipe, item)
 
     def calculate_device_count(
         self, recipe: Dict[str, Any], target_item: str, target_rate: float
@@ -201,12 +203,7 @@ class RecipeAnalyzer:
         Returns:
             如果是同物品配方返回True
         """
-        inputs = recipe.get("inputs", {})
-        outputs = recipe.get("outputs", {})
-
-        # 检查是否有物品同时存在于输入和输出中
-        common_items = set(inputs.keys()) & set(outputs.keys())
-        return len(common_items) > 0
+        return is_same_item_recipe(recipe)
 
     def get_net_consumption(self, recipe: Dict[str, Any]) -> Dict[str, float]:
         """
@@ -221,26 +218,7 @@ class RecipeAnalyzer:
         Returns:
             净消耗字典，{物品名称: 消耗量}
         """
-        inputs = recipe.get("inputs", {})
-        outputs = recipe.get("outputs", {})
-        catalysts = self._get_catalysts(recipe)
-
-        net_consumption = {}
-        for item, data in inputs.items():
-            if item in catalysts:
-                # 催化剂：如果是同物品配方，计算净消耗；否则排除
-                if self._is_same_item_recipe(recipe):
-                    # 同物品配方，计算实际净消耗（输入 - 输出）
-                    input_amount = data.get("amount", 0.0)
-                    output_amount = outputs.get(item, {}).get("amount", 0.0)
-                    net_amount = input_amount - output_amount
-                    if net_amount > 0:
-                        net_consumption[item] = net_amount
-            else:
-                # 非催化剂，直接计入净消耗
-                net_consumption[item] = data.get("amount", 0.0)
-
-        return net_consumption
+        return get_net_consumption(recipe)
 
     def get_net_production(self, recipe: Dict[str, Any]) -> Dict[str, float]:
         """
@@ -255,26 +233,7 @@ class RecipeAnalyzer:
         Returns:
             净产出字典，{物品名称: 净产出量}
         """
-        inputs = recipe.get("inputs", {})
-        outputs = recipe.get("outputs", {})
-        catalysts = self._get_catalysts(recipe)
-
-        net_production = {}
-        for item, data in outputs.items():
-            output_amount = data.get("amount", 0.0)
-            input_amount = inputs.get(item, {}).get("amount", 0.0)
-
-            if item in catalysts:
-                # 催化剂：如果是同物品配方，计算净产出；否则排除
-                if self._is_same_item_recipe(recipe):
-                    net_amount = output_amount - input_amount
-                    if net_amount != 0.0:
-                        net_production[item] = net_amount
-            else:
-                # 非催化剂，直接计入净产出
-                net_production[item] = output_amount
-
-        return net_production
+        return get_net_production(recipe)
 
     def analyze_recipe(self, recipe: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -299,7 +258,6 @@ class RecipeAnalyzer:
         # 计算净产出
         net_outputs = {}
         has_positive_output = False
-        has_negative_output = False
 
         for item in set(inputs.keys()) | set(outputs.keys()):
             net_output = self.calculate_net_output_for_item(recipe, item)
@@ -307,8 +265,6 @@ class RecipeAnalyzer:
                 net_outputs[item] = net_output
                 if net_output > 0:
                     has_positive_output = True
-                else:
-                    has_negative_output = True
 
         # 确定配方类型
         recipe_type = RecipeType.NORMAL
@@ -426,7 +382,8 @@ class PathComparisonEngine:
                     first_output = list(recipe["outputs"].values())[0]
                     if isinstance(first_output, dict) and "amount" in first_output:
                         # 设备数与产出率成反比
-                        total_devices += 1.0 / max(first_output["amount"], 0.001)
+                        total_devices += 1.0 / \
+                            max(first_output["amount"], 0.001)
 
             return (total_devices, len(path))
 
@@ -727,12 +684,23 @@ class CraftingCalculator:
         self.recipe_manager = recipe_manager
         self.recipes = recipe_manager.get_all_recipes()
         self.path_engine = PathComparisonEngine()  # 路径对比引擎
+        
+    def clear_cache(self) -> None:
+        """
+        清除所有缓存的计算结果
+        
+        在配方数据发生变化后调用此方法，以确保获取最新的计算结果
+        """
+        self.find_production_paths.cache_clear()
+        self._item_exists.cache_clear()
+        self.calculate_production_chain.cache_clear()
 
+    @lru_cache(maxsize=128)
     def calculate_production_chain(
         self, target_item: str, target_rate: float
     ) -> List[Dict[str, Any]]:
         """
-        计算生产链
+        计算生产链（已缓存）
 
         Args:
             target_item: 目标产物名称
@@ -760,9 +728,10 @@ class CraftingCalculator:
 
         return result_trees
 
+    @lru_cache(maxsize=256)
     def _item_exists(self, item_name: str) -> bool:
         """
-        检查物品是否存在于任何配方的输入或输出中
+        检查物品是否存在于任何配方的输入或输出中（已缓存）
 
         Args:
             item_name: 物品名称
@@ -770,7 +739,9 @@ class CraftingCalculator:
         Returns:
             如果物品存在于任何配方中返回True
         """
-        for recipe in self.recipes.values():
+        # 每次调用都获取最新配方，确保缓存时数据是最新的
+        recipes = self.recipe_manager.get_all_recipes()
+        for recipe in recipes.values():
             # 检查输入物品
             for input_item in recipe.get("inputs", {}).keys():
                 if input_item.strip() == item_name:
@@ -781,11 +752,12 @@ class CraftingCalculator:
                     return True
         return False
 
+    @lru_cache(maxsize=128)
     def find_production_paths(
-        self, target_item: str, visited: Optional[Set[str]] = None
+        self, target_item: str, visited: Optional[FrozenSet[str]] = None
     ) -> List[List[Dict[str, Any]]]:
         """
-        查找所有可能的生产路径
+        查找所有可能的生产路径（已缓存）
 
         Args:
             target_item: 目标产物名称
@@ -795,16 +767,16 @@ class CraftingCalculator:
             生产路径列表，每条路径是配方的列表
         """
         if visited is None:
-            visited = set()
+            visited = frozenset()
 
         # 避免循环
         if target_item in visited:
             return []
 
-        visited.add(target_item)
-
-        # 获取最新配方
-        self.recipes = self.recipe_manager.get_all_recipes()
+        # 转换为可变集合进行操作
+        visited_set = set(visited)
+        visited_set.add(target_item)
+        new_visited = frozenset(visited_set)
 
         # 查找所有能生产该物品的配方
         producing_recipes = self.recipe_manager.search_recipes_by_item(
@@ -813,7 +785,6 @@ class CraftingCalculator:
 
         # 如果没有找到配方，说明是基础原料
         if not producing_recipes:
-            visited.remove(target_item)
             return [[]]
 
         all_paths = []
@@ -824,9 +795,9 @@ class CraftingCalculator:
             input_paths_list = []
 
             # 检查每个输入物品是否有生产路径
-            valid_inputs = True
             for input_item in recipe["inputs"]:
-                input_paths = self.find_production_paths(input_item, visited.copy())
+                input_paths = self.find_production_paths(
+                    input_item, new_visited)
                 if not input_paths:
                     # 某个输入物品无法生产，将其视为基础原料
                     # 继续处理其他输入物品，不中断循环
@@ -837,25 +808,32 @@ class CraftingCalculator:
             if not input_paths_list:
                 continue
 
-            # 生成所有可能的组合路径
-            combined_paths = self._combine_paths(input_paths_list)
+            # 生成所有可能的组合路径（添加优化参数）
+            combined_paths = self._combine_paths(
+                input_paths_list,
+                max_paths=100,
+                max_path_length=50
+            )
 
             # 将当前配方添加到每条路径的开头
             for path in combined_paths:
                 path.insert(0, recipe)
                 all_paths.append(path)
 
-        visited.remove(target_item)
         return all_paths
 
     def _combine_paths(
-        self, paths_list: List[List[List[Dict[str, Any]]]]
+        self, paths_list: List[List[List[Dict[str, Any]]]],
+        max_paths: int = 100, max_path_length: int = 50
     ) -> List[List[Dict[str, Any]]]:
         """
-        组合多条路径列表，生成所有可能的路径组合
+        组合多条路径列表，生成所有可能的路径组合（优化版）
+        采用迭代实现替代递归，添加剪枝和去重机制，避免指数级爆炸
 
         Args:
             paths_list: 路径列表的列表
+            max_paths: 最大返回路径数量，超过时提前终止
+            max_path_length: 单条路径最大长度，超过时剪枝
 
         Returns:
             组合后的路径列表
@@ -863,13 +841,38 @@ class CraftingCalculator:
         if not paths_list:
             return [[]]
 
-        result = []
-        first_paths = paths_list[0]
-        remaining_paths = paths_list[1:]
+        # 迭代实现，避免递归栈溢出
+        result: List[List[Dict[str, Any]]] = [[]]
+        seen_paths = set()
 
-        for first_path in first_paths:
-            for rest_path in self._combine_paths(remaining_paths):
-                result.append(first_path + rest_path)
+        for path_group in paths_list:
+            temp = []
+            for existing in result:
+                for path in path_group:
+                    new_path = existing + path
+                    
+                    # 路径长度剪枝
+                    if len(new_path) > max_path_length:
+                        continue
+                    
+                    # 路径去重：通过配方ID组合生成唯一标识
+                    # 空路径（基础原料）不需要去重
+                    if new_path:
+                        path_key = tuple(recipe.get("id", id(recipe)) for recipe in new_path)
+                        if path_key in seen_paths:
+                            continue
+                        seen_paths.add(path_key)
+                    temp.append(new_path)
+                    
+                    # 提前终止：达到最大路径数量
+                    if len(temp) >= max_paths:
+                        break
+                if len(temp) >= max_paths:
+                    break
+            
+            result = temp
+            if not result:
+                break
 
         return result
 
@@ -1011,20 +1014,20 @@ class CraftingCalculator:
         """
         raw_materials: Dict[str, float] = {}
 
-        def traverse(node: CraftingNode) -> None:
+        def collect_raw_materials(node: CraftingNode) -> None:
             # 基础原料：没有配方且没有子节点的叶子节点
             if not node.recipe and not node.children:
                 if node.item_name in raw_materials:
                     raw_materials[node.item_name] += node.amount
                 else:
                     raw_materials[node.item_name] = node.amount
-                return
 
-            # 遍历子节点
-            for child in node.children:
-                traverse(child)
+        traverse_tree(
+            tree,
+            child_accessor=lambda node: node.children,
+            callback=collect_raw_materials
+        )
 
-        traverse(tree)
         return raw_materials
 
     def get_device_stats(self, tree: CraftingNode) -> Dict[str, float]:
@@ -1039,7 +1042,7 @@ class CraftingCalculator:
         """
         device_stats = {}
 
-        def traverse(node: CraftingNode):
+        def collect_device_stats(node: CraftingNode):
             if node.recipe:
                 device_name = node.recipe["device"]
                 if device_name in device_stats:
@@ -1047,11 +1050,12 @@ class CraftingCalculator:
                 else:
                     device_stats[device_name] = node.device_count
 
-            # 遍历子节点
-            for child in node.children:
-                traverse(child)
+        traverse_tree(
+            tree,
+            child_accessor=lambda node: node.children,
+            callback=collect_device_stats
+        )
 
-        traverse(tree)
         return device_stats
 
     def build_crafting_tree_with_alternatives(
@@ -1089,7 +1093,8 @@ class CraftingCalculator:
         for path in all_available_paths:
             # 为每条路径构建临时树以获取节点路径
             try:
-                temp_root = self.build_crafting_tree(target_item, target_rate, path)
+                temp_root = self.build_crafting_tree(
+                    target_item, target_rate, path)
                 if temp_root:
                     node_path = self._flatten_tree_to_path(temp_root)
                     all_node_paths.append(node_path)
@@ -1130,19 +1135,11 @@ class CraftingCalculator:
         Returns:
             按遍历顺序排列的节点列表
         """
-        path = []
-        visited = set()
-
-        def dfs(node: CraftingNode):
-            if node.item_name in visited:
-                return
-            visited.add(node.item_name)
-            path.append(node)
-            for child in node.children:
-                dfs(child)
-
-        dfs(root)
-        return path
+        return flatten_tree(
+            root,
+            child_accessor=lambda node: node.children,
+            key_extractor=lambda node: node.item_name
+        )
 
     def _mark_path_info(self, root: CraftingNode):
         """

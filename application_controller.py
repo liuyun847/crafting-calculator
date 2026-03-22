@@ -264,9 +264,6 @@ class ApplicationController:
         path_info = tree_dict.get("path_info", {})
         alternative_count = path_info.get("alternative_count", 0)
 
-        # 获取序列化的替代路径（用于后续查看）
-        serialized_alternatives = tree_dict.get("alternative_paths", [])
-
         # 增加节点计数
         node_counter[0] += 1
         current_node_index = node_counter[0]
@@ -357,8 +354,6 @@ class ApplicationController:
         # 转换为列表便于分页
         recipe_list = list(recipes.items())
         page_size = 10
-        total_recipes = len(recipe_list)
-        total_pages = (total_recipes + page_size - 1) // page_size
         current_page = 1
         search_keyword = ""
 
@@ -384,7 +379,8 @@ class ApplicationController:
                 filtered_list = recipe_list
 
             total_filtered = len(filtered_list)
-            total_filtered_pages = max(1, (total_filtered + page_size - 1) // page_size)
+            total_filtered_pages = max(
+                1, (total_filtered + page_size - 1) // page_size)
 
             # 确保当前页在有效范围内
             if current_page > total_filtered_pages:
@@ -405,7 +401,8 @@ class ApplicationController:
                 )
             else:
                 self.io.print(
-                    f"  配方列表 - 第 {current_page}/{total_filtered_pages} 页 (共 {total_filtered} 条)"
+                    f"  配方列表 - 第 {current_page}/{total_filtered_pages} 页 "
+                    f"(共 {total_filtered} 条)"
                 )
             self.io.print("=" * 70)
 
@@ -413,7 +410,7 @@ class ApplicationController:
                 self.io.print("  没有找到配方")
             else:
                 for i, (recipe_name, recipe) in enumerate(
-                    current_recipes, start_idx + 1
+                        current_recipes, start_idx + 1
                 ):
                     device = recipe.get("device", "未知设备")
                     inputs = recipe.get("inputs", {})
@@ -573,7 +570,8 @@ class ApplicationController:
             items[item_name] = item_data
 
             choice = (
-                self.io.input(f"\n是否继续添加{item_type}物品? (y/n): ").strip().lower()
+                self.io.input(
+                    f"\n是否继续添加{item_type}物品? (y/n): ").strip().lower()
             )
             if choice not in ["y", "yes", "是"]:
                 break
@@ -632,9 +630,11 @@ class ApplicationController:
                         continue
 
                     if len(user_input) <= 2:
-                        filtered_search = self._print_name_list(name_list, user_input)
+                        filtered_search = self._print_name_list(
+                            name_list, user_input)
                         if filtered_search:
-                            search_input = self.io.input(f"\n{prompt}: ").strip()
+                            search_input = self.io.input(
+                                f"\n{prompt}: ").strip()
                             if not search_input:
                                 self.io.print("输入不能为空，请重新输入")
                                 continue
@@ -972,8 +972,8 @@ class ApplicationController:
             inputs: 输入物品字典
             outputs: 输出物品字典
         """
-        self.io.print(f"\n当前配方信息:")
-        self.io.print(f"-" * 50)
+        self.io.print("\n当前配方信息:")
+        self.io.print("-" * 50)
         self.io.print(f"配方名称: {recipe_name}")
         self.io.print(f"设备名称: {device}")
 
@@ -1000,7 +1000,7 @@ class ApplicationController:
                     self.io.print(f"  - {item_name}: {amount:.2f}/s ({expr})")
                 else:
                     self.io.print(f"  - {item_name}: {item_data}")
-        self.io.print(f"-" * 50)
+        self.io.print("-" * 50)
 
     def _modify_device_name(self, current_device: str) -> str:
         """
@@ -1059,7 +1059,7 @@ class ApplicationController:
             self.io.print("3. 修改物品数量")
             self.io.print("4. 完成修改")
 
-            choice = self.io.input(f"\n请选择操作 (1-4): ").strip()
+            choice = self.io.input("\n请选择操作 (1-4): ").strip()
 
             if choice == "1":
                 # 添加物品
@@ -1106,35 +1106,7 @@ class ApplicationController:
 
         return items
 
-    def _delete_recipe_terminal(self) -> None:
-        """删除配方（终端模式）"""
-        recipes = self.recipe_manager.get_all_recipes()
-        if not recipes:
-            self.io.print("当前没有可删除的配方")
-            return
 
-        self._show_recipe_list_terminal()
-        choice = self.io.input("\n请输入要删除的配方序号: ")
-
-        try:
-            index = int(choice) - 1
-            recipe_names = list(recipes.keys())
-            if 0 <= index < len(recipe_names):
-                recipe_name = recipe_names[index]
-                confirm = (
-                    self.io.input(f"确定要删除配方 '{recipe_name}'? (y/n): ")
-                    .strip()
-                    .lower()
-                )
-                if confirm in ["y", "yes", "是"]:
-                    self.recipe_manager.delete_recipe(recipe_name)
-                    self.io.print(f"成功删除配方: {recipe_name}")
-                else:
-                    self.io.print("已取消删除")
-            else:
-                self.io.print("选择无效")
-        except ValueError:
-            self.io.print("请输入有效的数字")
 
     def _display_recipe_preview(
         self,
@@ -1228,7 +1200,8 @@ class ApplicationController:
                 return
 
             self.io.print("\n正在计算生产链...")
-            trees = self.calculator.calculate_production_chain(target_item, target_rate)
+            trees = self.calculator.calculate_production_chain(
+                target_item, target_rate)
 
             if not trees:
                 self.io.print(f"未找到生产 {target_item} 的路径")
@@ -1680,7 +1653,8 @@ class ApplicationController:
         if not self.calculator:
             return {"output": "请先选择配方文件", "prompt": "请选择操作 (1-5): "}
 
-        trees = self.calculator.calculate_production_chain(target_item, target_rate)
+        trees = self.calculator.calculate_production_chain(
+            target_item, target_rate)
 
         if not trees:
             return {
@@ -2012,15 +1986,6 @@ class ApplicationController:
         output += "\n3. 修改物品数量"
         output += "\n4. 返回上级菜单"
 
-        state_map = {
-            ("input", "1"): "modify_input_add",
-            ("input", "2"): "modify_input_delete",
-            ("input", "3"): "modify_input_modify",
-            ("output", "1"): "modify_output_add",
-            ("output", "2"): "modify_output_delete",
-            ("output", "3"): "modify_output_modify",
-        }
-
         self.pending_data["modify_item_type"] = item_type
         self.state = f"modify_{item_type}_items_menu"
         return {"output": output, "prompt": "请选择操作 (1-4): "}
@@ -2086,7 +2051,8 @@ class ApplicationController:
         elif choice == "2":
             # 删除物品
             self.state = "modify_output_delete"
-            current_outputs = self.pending_data.get("modify_current_outputs", {})
+            current_outputs = self.pending_data.get(
+                "modify_current_outputs", {})
             if not current_outputs:
                 return {
                     "output": "当前没有输出物品可以删除",
@@ -2096,7 +2062,8 @@ class ApplicationController:
         else:
             # 修改物品数量
             self.state = "modify_output_modify"
-            current_outputs = self.pending_data.get("modify_current_outputs", {})
+            current_outputs = self.pending_data.get(
+                "modify_current_outputs", {})
             if not current_outputs:
                 return {
                     "output": "当前没有输出物品可以修改",
@@ -2155,7 +2122,8 @@ class ApplicationController:
             recipe_name = self.pending_data.get("modify_recipe_name", "")
             current_device = self.pending_data.get("modify_current_device", "")
             current_inputs = self.pending_data.get("modify_current_inputs", {})
-            current_outputs = self.pending_data.get("modify_current_outputs", {})
+            current_outputs = self.pending_data.get(
+                "modify_current_outputs", {})
 
             try:
                 self.recipe_manager.update_recipe(
@@ -2284,7 +2252,8 @@ class ApplicationController:
                 }
 
             item_name = self.pending_data["current_modify_item"]
-            current_outputs = self.pending_data.get("modify_current_outputs", {})
+            current_outputs = self.pending_data.get(
+                "modify_current_outputs", {})
             current_outputs[item_name] = {
                 "amount": amount,
                 "expression": command.strip(),
@@ -2416,7 +2385,8 @@ class ApplicationController:
                 }
 
             item_name = self.pending_data["current_modify_item"]
-            current_outputs = self.pending_data.get("modify_current_outputs", {})
+            current_outputs = self.pending_data.get(
+                "modify_current_outputs", {})
             current_outputs[item_name] = {
                 "amount": amount,
                 "expression": command.strip(),
@@ -2467,7 +2437,8 @@ class ApplicationController:
             elif len(command.strip()) <= 2:
                 self.pending_data["device_search_keyword"] = command.strip()
                 self.state = "add_recipe_device_search"
-                output = self._print_name_list_to_string(device_freq, command.strip())
+                output = self._print_name_list_to_string(
+                    device_freq, command.strip())
                 return {"output": output, "prompt": "请输入设备名称: "}
             else:
                 self.pending_data["device"] = command.strip()
@@ -2542,7 +2513,6 @@ class ApplicationController:
             return {"output": "物品名称不能为空", "prompt": "请输入输出物品名称: "}
 
         item_freq = self.pending_data.get("item_freq", [])
-        existing_items = self.pending_data.get("existing_items", set())
 
         try:
             index = int(command.strip())
@@ -2573,7 +2543,8 @@ class ApplicationController:
             elif len(command.strip()) <= 2:
                 self.pending_data["output_search_keyword"] = command.strip()
                 self.state = "add_recipe_output_search"
-                output = self._print_name_list_to_string(item_freq, command.strip())
+                output = self._print_name_list_to_string(
+                    item_freq, command.strip())
                 return {"output": output, "prompt": "请输入输出物品名称: "}
             else:
                 item_name = command.strip()
@@ -2735,7 +2706,8 @@ class ApplicationController:
             elif len(command.strip()) <= 2:
                 self.pending_data["input_search_keyword"] = command.strip()
                 self.state = "add_recipe_input_search"
-                output = self._print_name_list_to_string(item_freq, command.strip())
+                output = self._print_name_list_to_string(
+                    item_freq, command.strip())
                 return {"output": output, "prompt": "请输入输入物品名称: "}
             else:
                 item_name = command.strip()
@@ -3418,7 +3390,8 @@ class ApplicationController:
                 continue
 
             # 计算替代路径的设备总数
-            alt_device_count = sum(node.get("device_count", 0) for node in alt_path)
+            alt_device_count = sum(node.get("device_count", 0)
+                                   for node in alt_path)
 
             # 计算设备数量差异
             device_diff = alt_device_count - current_device_count
@@ -3520,7 +3493,6 @@ class ApplicationController:
 
         # 重新计算生产链，使用新的主路径
         # 将选中的替代路径提升到第一位作为主路径
-        trees = self._current_chain_trees.copy()
 
         # 找到包含选中路径的树并提升到第一位
         # 这里简化处理：直接重新显示新的树
@@ -3529,16 +3501,16 @@ class ApplicationController:
         # 简化方案：使用选中的替代路径构建新树
         # 将第一个节点的信息作为根节点
         if selected_alt_path:
-            root_node = selected_alt_path[0]
             # 构建简化的新树结构
-            new_tree = self._build_tree_from_path(selected_alt_path, target_rate)
+            new_tree = self._build_tree_from_path(
+                selected_alt_path, target_rate)
             if new_tree:
                 self._current_main_tree = new_tree
                 # 重新分配节点编号
                 self._assign_node_ids(new_tree)
                 # 显示新的生产链
                 self._display_current_chain()
-                self.io.print(f"\n成功切换到新路径！")
+                self.io.print("\n成功切换到新路径！")
                 return True
 
         self.io.print("错误: 路径切换失败")

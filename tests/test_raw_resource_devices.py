@@ -176,12 +176,14 @@ class TestRawResourceDeviceStats:
         # 构建包含原始资源的合成树
         root = CraftingNode("铁锭", 5.0)
         root.recipe = raw_resource_recipes["铁矿冶炼"]
-        root.device_count = 5.0 / root.recipe["outputs"]["铁锭"]["amount"]  # 5/5 = 1
+        root.device_count = 5.0 / \
+            root.recipe["outputs"]["铁锭"]["amount"]  # 5/5 = 1
 
         # 创建子节点（铁矿石作为原始资源）
         child = CraftingNode("铁矿石", 10.0)
         child.recipe = raw_resource_recipes["采矿"]
-        child.device_count = 10.0 / child.recipe["outputs"]["铁矿石"]["amount"]  # 10/1 = 10
+        child.device_count = 10.0 / \
+            child.recipe["outputs"]["铁矿石"]["amount"]  # 10/1 = 10
 
         root.children = [child]
 
@@ -201,7 +203,8 @@ class TestRawResourceDeviceStats:
         """
         root = CraftingNode("水", 50.0)
         root.recipe = raw_resource_recipes["抽水"]
-        root.device_count = 50.0 / root.recipe["outputs"]["水"]["amount"]  # 50/10 = 5
+        root.device_count = 50.0 / \
+            root.recipe["outputs"]["水"]["amount"]  # 50/10 = 5
 
         device_stats = raw_resource_calculator.get_device_stats(root)
 
@@ -217,7 +220,8 @@ class TestRawResourceDeviceStats:
         """
         # 创建父节点
         root = CraftingNode("产品", 1.0)
-        root.recipe = {"device": "工厂", "inputs": {}, "outputs": {"产品": {"amount": 1.0}}}
+        root.recipe = {"device": "工厂", "inputs": {},
+                       "outputs": {"产品": {"amount": 1.0}}}
         root.device_count = 1.0
 
         # 铁矿石子节点
@@ -376,17 +380,20 @@ class TestMixedScenarios:
         # 手动构建完整的生产链
         root = CraftingNode("钢板", 2.0)
         root.recipe = raw_resource_recipes["钢板制造"]
-        root.device_count = 2.0 / root.recipe["outputs"]["钢板"]["amount"]  # 2/2 = 1
+        root.device_count = 2.0 / \
+            root.recipe["outputs"]["钢板"]["amount"]  # 2/2 = 1
 
         # 铁锭节点
         child_iron = CraftingNode("铁锭", 5.0)
         child_iron.recipe = raw_resource_recipes["铁矿冶炼"]
-        child_iron.device_count = 5.0 / child_iron.recipe["outputs"]["铁锭"]["amount"]  # 5/5 = 1
+        child_iron.device_count = 5.0 / \
+            child_iron.recipe["outputs"]["铁锭"]["amount"]  # 5/5 = 1
 
         # 铁矿石节点（原始资源）
         grandchild_ore = CraftingNode("铁矿石", 10.0)
         grandchild_ore.recipe = raw_resource_recipes["采矿"]
-        grandchild_ore.device_count = 10.0 / grandchild_ore.recipe["outputs"]["铁矿石"]["amount"]  # 10/1 = 10
+        grandchild_ore.device_count = 10.0 / \
+            grandchild_ore.recipe["outputs"]["铁矿石"]["amount"]  # 10/1 = 10
 
         # 煤炭节点（基础原料）
         grandchild_coal = CraftingNode("煤炭", 5.0)

@@ -432,7 +432,8 @@ class TestDoublingRecipeChain:
         assert "b" in downstream_recipe["outputs"]
 
         # 计算净消耗和净产出
-        net_consumption = recipe_analyzer.get_net_consumption(downstream_recipe)
+        net_consumption = recipe_analyzer.get_net_consumption(
+            downstream_recipe)
         net_production = recipe_analyzer.get_net_production(downstream_recipe)
 
         assert "a" in net_consumption
@@ -618,7 +619,8 @@ class TestMixedSpecialRecipes:
 
         # 测试倍增配方
         doubling = mixed_special_recipes["倍增配方"]
-        net_output = recipe_analyzer.calculate_net_output_for_item(doubling, "副产物z")
+        net_output = recipe_analyzer.calculate_net_output_for_item(
+            doubling, "副产物z")
         # 净产出 = 5 - 2 = 3
         assert net_output == 3.0
 

@@ -8,15 +8,14 @@ import tempfile
 import shutil
 import os
 import json
-from typing import Dict, Any, List
-from pathlib import Path
+from typing import Dict, Any
 
 
 @pytest.fixture
 def temp_dir():
     """
     创建临时目录用于测试文件操作
-    
+
     Yields:
         str: 临时目录路径
     """
@@ -29,7 +28,7 @@ def temp_dir():
 def sample_recipes() -> Dict[str, Any]:
     """
     提供示例配方数据
-    
+
     Returns:
         dict: 示例配方字典
     """
@@ -91,7 +90,7 @@ def sample_recipes() -> Dict[str, Any]:
 def sample_config() -> Dict[str, Any]:
     """
     提供示例配置数据
-    
+
     Returns:
         dict: 示例配置字典
     """
@@ -104,24 +103,24 @@ def sample_config() -> Dict[str, Any]:
 def recipe_manager(temp_dir, sample_recipes):
     """
     创建 RecipeManager 实例并加载示例配方
-    
+
     Args:
         temp_dir: 临时目录路径
         sample_recipes: 示例配方数据
-        
+
     Yields:
         RecipeManager: 配方管理器实例
     """
     from data_manager import RecipeManager
-    
+
     manager = RecipeManager(recipes_dir=temp_dir)
-    
+
     recipe_file = os.path.join(temp_dir, "test_game.json")
     with open(recipe_file, "w", encoding="utf-8") as f:
         json.dump(sample_recipes, f, indent=2, ensure_ascii=False)
-    
+
     manager.load_recipe_file("test_game")
-    
+
     yield manager
 
 
@@ -129,15 +128,15 @@ def recipe_manager(temp_dir, sample_recipes):
 def calculator(recipe_manager):
     """
     创建 CraftingCalculator 实例
-    
+
     Args:
         recipe_manager: 配方管理器实例
-        
+
     Yields:
         CraftingCalculator: 计算器实例
     """
     from calculator import CraftingCalculator
-    
+
     calc = CraftingCalculator(recipe_manager)
     yield calc
 
@@ -146,12 +145,12 @@ def calculator(recipe_manager):
 def crafting_node():
     """
     创建 CraftingNode 实例
-    
+
     Yields:
         CraftingNode: 合成节点实例
     """
     from calculator import CraftingNode
-    
+
     node = CraftingNode("铁锭", 1.0)
     yield node
 
@@ -160,12 +159,12 @@ def crafting_node():
 def path_comparison_engine():
     """
     创建 PathComparisonEngine 实例
-    
+
     Yields:
         PathComparisonEngine: 路径对比引擎实例
     """
     from calculator import PathComparisonEngine
-    
+
     engine = PathComparisonEngine()
     yield engine
 
@@ -174,12 +173,12 @@ def path_comparison_engine():
 def terminal_io():
     """
     创建 TerminalIO 实例
-    
+
     Yields:
         TerminalIO: 终端 IO 实例
     """
     from io_interface import TerminalIO
-    
+
     io = TerminalIO()
     yield io
 
@@ -188,12 +187,12 @@ def terminal_io():
 def web_io():
     """
     创建 WebIO 实例
-    
+
     Yields:
         WebIO: Web IO 实例
     """
     from io_interface import WebIO
-    
+
     io = WebIO()
     yield io
 
@@ -202,7 +201,7 @@ def web_io():
 def sample_recipe_data():
     """
     提供单个配方数据
-    
+
     Returns:
         dict: 配方数据
     """
@@ -222,18 +221,18 @@ def sample_recipe_data():
 def sample_recipe_file(temp_dir, sample_recipes):
     """
     创建示例配方文件
-    
+
     Args:
         temp_dir: 临时目录路径
         sample_recipes: 示例配方数据
-        
+
     Yields:
         str: 配方文件路径
     """
     recipe_file = os.path.join(temp_dir, "example.json")
     with open(recipe_file, "w", encoding="utf-8") as f:
         json.dump(sample_recipes, f, indent=2, ensure_ascii=False)
-    
+
     yield recipe_file
 
 
@@ -241,18 +240,18 @@ def sample_recipe_file(temp_dir, sample_recipes):
 def sample_config_file(temp_dir, sample_config):
     """
     创建示例配置文件
-    
+
     Args:
         temp_dir: 临时目录路径
         sample_config: 示例配置数据
-        
+
     Yields:
         str: 配置文件路径
     """
     config_file = os.path.join(temp_dir, "config.json")
     with open(config_file, "w", encoding="utf-8") as f:
         json.dump(sample_config, f, indent=2, ensure_ascii=False)
-    
+
     yield config_file
 
 
@@ -260,17 +259,17 @@ def sample_config_file(temp_dir, sample_config):
 def invalid_json_file(temp_dir):
     """
     创建无效的 JSON 文件
-    
+
     Args:
         temp_dir: 临时目录路径
-        
+
     Yields:
         str: 无效 JSON 文件路径
     """
     invalid_file = os.path.join(temp_dir, "invalid.json")
     with open(invalid_file, "w", encoding="utf-8") as f:
         f.write("{ invalid json content")
-    
+
     yield invalid_file
 
 
@@ -278,17 +277,17 @@ def invalid_json_file(temp_dir):
 def empty_recipe_file(temp_dir):
     """
     创建空的配方文件
-    
+
     Args:
         temp_dir: 临时目录路径
-        
+
     Yields:
         str: 空配方文件路径
     """
     empty_file = os.path.join(temp_dir, "empty.json")
     with open(empty_file, "w", encoding="utf-8") as f:
         json.dump({}, f)
-    
+
     yield empty_file
 
 
@@ -296,7 +295,7 @@ def empty_recipe_file(temp_dir):
 def complex_recipes():
     """
     提供复杂的配方数据（用于测试多路径和复杂计算）
-    
+
     Returns:
         dict: 复杂配方字典
     """
