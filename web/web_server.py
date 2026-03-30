@@ -4,19 +4,19 @@
 提供与终端程序完全一致的 Web 交互界面，支持浏览器自动化测试。
 
 安全配置：
-- Secret Key: 优先从环境变量 FLASK_SECRET_KEY 读取，否则使用开发密钥
+- Secret Key: 通过 shared.security 模块统一管理
 - CSRF 保护: 使用 Flask-WTF，API 端点已豁免（纯 API 服务）
 """
 
 import os
 import sys
-import warnings
 from typing import Dict, Any
 from flask import Flask, render_template, request, jsonify, session
 from flask_wtf.csrf import CSRFProtect
 
 # 导入公共API模块
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from shared.security import get_flask_secret_key
 from shared.api import (
     BaseWebSession,
     get_session,
@@ -35,26 +35,8 @@ from shared.api import (
 )
 
 
-# ============================================================
-# Secret Key 配置
-# ============================================================
-# 优先从环境变量读取密钥，用于生产环境
-# 如果环境变量不存在，使用固定的开发密钥（仅用于开发环境）
-_SECRET_KEY = os.environ.get("FLASK_SECRET_KEY")
-
-if _SECRET_KEY is None:
-    # 开发环境使用固定密钥（便于调试和测试）
-    _SECRET_KEY = "dev-secret-key-for-web-server-only"
-    # 在生产环境警告用户设置环境变量
-    if os.environ.get("FLASK_ENV") == "production":
-        warnings.warn(
-            "生产环境应设置环境变量 FLASK_SECRET_KEY 以确保安全！",
-            UserWarning,
-            stacklevel=2,
-        )
-
 app = Flask(__name__)
-app.secret_key = _SECRET_KEY
+app.secret_key = get_flask_secret_key("web-server")
 
 # ============================================================
 # CSRF 保护配置

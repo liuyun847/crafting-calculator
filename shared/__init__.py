@@ -4,3 +4,7 @@
 """
 
 __version__ = "1.0.0"
+
+from .security import get_flask_secret_key
+
+__all__ = ["get_flask_secret_key"]

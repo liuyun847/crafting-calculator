@@ -5,6 +5,7 @@
 import json
 import time
 import hashlib
+import threading
 from typing import Dict, Any, List, Optional
 from functools import wraps
 from flask import request, jsonify
@@ -15,6 +16,8 @@ from expression_parser import parse_expression
 # API层全局缓存
 # 结构: {cache_key: {"data": response_data, "timestamp": created_time, "expire_seconds": expire_seconds}}
 _api_cache: Dict[str, Dict[str, Any]] = {}
+# 缓存操作线程锁，防止竞态条件
+_cache_lock = threading.Lock()
 # 缓存最大数量
 _MAX_API_CACHE_SIZE = 256
 # 默认缓存过期时间（秒）
@@ -32,17 +35,18 @@ def _get_cached(key: str, expire_seconds: int) -> Optional[Dict[str, Any]]:
     Returns:
         缓存数据，如果不存在或已过期返回None
     """
-    if key not in _api_cache:
-        return None
+    with _cache_lock:
+        if key not in _api_cache:
+            return None
 
-    cached = _api_cache[key]
-    # 检查是否过期
-    if time.time() - cached["timestamp"] >= expire_seconds:
-        # 过期则删除
-        del _api_cache[key]
-        return None
+        cached = _api_cache[key]
+        # 检查是否过期
+        if time.time() - cached["timestamp"] >= expire_seconds:
+            # 过期则删除
+            del _api_cache[key]
+            return None
 
-    return cached["data"]
+        return cached["data"]
 
 
 def _set_cached(key: str, data: Dict[str, Any], expire_seconds: int) -> None:
@@ -54,24 +58,36 @@ def _set_cached(key: str, data: Dict[str, Any], expire_seconds: int) -> None:
         data: 缓存数据
         expire_seconds: 过期时间（秒）
     """
-    if len(_api_cache) >= _MAX_API_CACHE_SIZE:
-        # 清理过期缓存
-        _cleanup_expired_cache()
-        # 如果仍然满了，清理最旧的缓存
+    with _cache_lock:
         if len(_api_cache) >= _MAX_API_CACHE_SIZE:
-            oldest_key = min(_api_cache.keys(), key=lambda k: _api_cache[k]["timestamp"])
-            del _api_cache[oldest_key]
+            # 清理过期缓存
+            _cleanup_expired_cache_unlocked()
+            # 如果仍然满了，清理最旧的缓存
+            if len(_api_cache) >= _MAX_API_CACHE_SIZE:
+                oldest_key = min(_api_cache.keys(), key=lambda k: _api_cache[k]["timestamp"])
+                del _api_cache[oldest_key]
 
-    _api_cache[key] = {
-        "data": data,
-        "timestamp": time.time(),
-        "expire_seconds": expire_seconds
-    }
+        _api_cache[key] = {
+            "data": data,
+            "timestamp": time.time(),
+            "expire_seconds": expire_seconds
+        }
 
 
 def _cleanup_expired_cache() -> int:
     """
     清理过期的缓存
+
+    Returns:
+        清理的缓存数量
+    """
+    with _cache_lock:
+        return _cleanup_expired_cache_unlocked()
+
+
+def _cleanup_expired_cache_unlocked() -> int:
+    """
+    清理过期的缓存（内部方法，调用前需已持有锁）
 
     Returns:
         清理的缓存数量
