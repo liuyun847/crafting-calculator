@@ -689,11 +689,14 @@ class CraftingCalculator:
         """
         清除所有缓存的计算结果
         
-        在配方数据发生变化后调用此方法，以确保获取最新的计算结果
+        在配方数据发生变化后调用此方法，以确保获取最新的计算结果。
+        同时更新内部的 recipes 引用，确保后续计算使用最新的配方数据。
         """
         self.find_production_paths.cache_clear()
         self._item_exists.cache_clear()
         self.calculate_production_chain.cache_clear()
+        # 更新 recipes 引用，确保使用最新的配方数据
+        self.recipes = self.recipe_manager.get_all_recipes()
 
     @lru_cache(maxsize=128)
     def calculate_production_chain(

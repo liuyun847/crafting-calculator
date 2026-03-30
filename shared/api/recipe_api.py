@@ -2,10 +2,52 @@
 配方管理公共API模块
 提供跨应用的配方CRUD、物品查询、分页搜索等通用功能
 """
-from typing import Dict, Any, List
+import re
+from typing import Dict, Any, List, Tuple
 from flask import request, jsonify
 from urllib.parse import unquote
 from .session import get_session
+
+
+def validate_recipe_name(name: str) -> Tuple[bool, str]:
+    """
+    验证配方名称是否安全，防止路径遍历攻击
+    
+    Args:
+        name: 待验证的配方名称
+        
+    Returns:
+        元组 (是否有效, 错误信息)
+        - 有效时返回 (True, "")
+        - 无效时返回 (False, "错误原因")
+    """
+    if not name:
+        return False, "配方名称不能为空"
+    
+    if len(name) > 100:
+        return False, "配方名称过长（最多100个字符）"
+    
+    # 检查 null byte 和控制字符
+    if '\x00' in name:
+        return False, "配方名称包含非法字符（null byte）"
+    
+    for char in name:
+        if ord(char) < 32 and char not in '\t':
+            return False, "配方名称包含非法控制字符"
+    
+    # 检查路径遍历相关字符
+    dangerous_chars = ['/', '\\', '..']
+    for char in dangerous_chars:
+        if char in name:
+            return False, f"配方名称不能包含路径分隔符或父目录引用"
+    
+    # 只允许：字母、数字、中文、下划线、连字符
+    # \w 匹配 [a-zA-Z0-9_]
+    # \u4e00-\u9fff 匹配中文基本区
+    if not re.match(r'^[\w\u4e00-\u9fff\-]+$', name):
+        return False, "配方名称只能包含字母、数字、中文、下划线和连字符"
+    
+    return True, ""
 
 
 def get_games_api():
@@ -172,11 +214,16 @@ def get_recipe_api(recipe_name: str):
     Returns:
         JSON响应，包含配方详情
     """
-    web_session = get_session()
-    recipe_manager = web_session.controller.recipe_manager
-
     # 解码URL编码的配方名称
     decoded_name = unquote(recipe_name)
+    
+    # 验证配方名称安全性
+    is_valid, error_msg = validate_recipe_name(decoded_name)
+    if not is_valid:
+        return jsonify({"success": False, "error": error_msg}), 400
+
+    web_session = get_session()
+    recipe_manager = web_session.controller.recipe_manager
 
     try:
         recipe = recipe_manager.get_recipe(decoded_name)
@@ -220,6 +267,11 @@ def create_recipe_api():
     device_name = data["device"]
     inputs = data["inputs"]
     outputs = data["outputs"]
+
+    # 验证配方名称安全性
+    is_valid, error_msg = validate_recipe_name(recipe_name)
+    if not is_valid:
+        return jsonify({"success": False, "error": error_msg}), 400
 
     # 验证inputs和outputs格式
     if not isinstance(inputs, dict):
@@ -290,11 +342,16 @@ def update_recipe_api(recipe_name: str):
     Returns:
         JSON响应，包含更新结果
     """
-    web_session = get_session()
-    recipe_manager = web_session.controller.recipe_manager
-
     # 解码URL编码的配方名称
     decoded_name = unquote(recipe_name)
+    
+    # 验证配方名称安全性
+    is_valid, error_msg = validate_recipe_name(decoded_name)
+    if not is_valid:
+        return jsonify({"success": False, "error": error_msg}), 400
+
+    web_session = get_session()
+    recipe_manager = web_session.controller.recipe_manager
 
     # 检查配方是否存在
     if decoded_name not in recipe_manager.get_all_recipes():
@@ -399,11 +456,16 @@ def delete_recipe_api(recipe_name: str):
     Returns:
         JSON响应，包含删除结果
     """
-    web_session = get_session()
-    recipe_manager = web_session.controller.recipe_manager
-
     # 解码URL编码的配方名称
     decoded_name = unquote(recipe_name)
+    
+    # 验证配方名称安全性
+    is_valid, error_msg = validate_recipe_name(decoded_name)
+    if not is_valid:
+        return jsonify({"success": False, "error": error_msg}), 400
+
+    web_session = get_session()
+    recipe_manager = web_session.controller.recipe_manager
 
     # 检查配方是否存在
     if decoded_name not in recipe_manager.get_all_recipes():

@@ -5,6 +5,7 @@ Web会话管理公共模块
 import os
 import sys
 import uuid
+from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from flask import session
 
@@ -23,6 +24,24 @@ class BaseWebSession:
     def __init__(self):
         self.io = WebIO()
         self.controller = ApplicationController(self.io)
+        self._created_at = datetime.now()
+        self._last_accessed = datetime.now()
+
+    def is_expired(self, max_age_hours: int = 1) -> bool:
+        """
+        检查会话是否过期
+
+        Args:
+            max_age_hours: 最大存活时间（小时），默认1小时
+
+        Returns:
+            如果会话已过期返回True
+        """
+        return datetime.now() - self._last_accessed > timedelta(hours=max_age_hours)
+
+    def touch(self) -> None:
+        """更新最后访问时间"""
+        self._last_accessed = datetime.now()
 
     def process_command(self, command: str) -> Dict[str, Any]:
         """
@@ -43,6 +62,8 @@ class BaseWebSession:
         """重置会话状态"""
         self.io = WebIO()
         self.controller = ApplicationController(self.io)
+        self._created_at = datetime.now()
+        self._last_accessed = datetime.now()
 
     def get_state(self) -> Dict[str, Any]:
         """
@@ -139,6 +160,29 @@ class BaseWebSession:
             return False
 
 
+def cleanup_expired_sessions(max_age_hours: int = 1) -> int:
+    """
+    清理过期会话
+
+    Args:
+        max_age_hours: 最大存活时间（小时），默认1小时
+
+    Returns:
+        清理的会话数量
+    """
+    if not hasattr(get_session, "_sessions"):
+        return 0
+
+    expired = [
+        sid for sid, sess in get_session._sessions.items()
+        if sess.is_expired(max_age_hours)
+    ]
+    for sid in expired:
+        del get_session._sessions[sid]
+
+    return len(expired)
+
+
 def get_session(session_class=BaseWebSession) -> BaseWebSession:
     """
     获取或创建会话
@@ -153,6 +197,9 @@ def get_session(session_class=BaseWebSession) -> BaseWebSession:
     if not hasattr(get_session, "_sessions"):
         get_session._sessions = {}
 
+    # 自动清理过期会话
+    cleanup_expired_sessions()
+
     session_id = session.get("session_id")
     if not session_id or session_id not in get_session._sessions:
         # 创建新会话
@@ -161,6 +208,9 @@ def get_session(session_class=BaseWebSession) -> BaseWebSession:
         get_session._sessions[session_id] = session_class()
 
     web_session = get_session._sessions[session_id]
+
+    # 更新最后访问时间
+    web_session.touch()
 
     # 恢复状态
     if "state" in session:

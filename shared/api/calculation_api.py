@@ -3,8 +3,9 @@
 提供跨应用的生产链计算、路径对比、替代路径查询等通用功能
 """
 import json
+import time
 import hashlib
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from functools import wraps
 from flask import request, jsonify
 from urllib.parse import unquote
@@ -12,14 +13,85 @@ from .session import get_session
 from expression_parser import parse_expression
 
 # API层全局缓存
+# 结构: {cache_key: {"data": response_data, "timestamp": created_time, "expire_seconds": expire_seconds}}
 _api_cache: Dict[str, Dict[str, Any]] = {}
 # 缓存最大数量
 _MAX_API_CACHE_SIZE = 256
+# 默认缓存过期时间（秒）
+_DEFAULT_CACHE_EXPIRE_SECONDS = 3600
+
+
+def _get_cached(key: str, expire_seconds: int) -> Optional[Dict[str, Any]]:
+    """
+    获取缓存数据，检查是否过期
+
+    Args:
+        key: 缓存键
+        expire_seconds: 过期时间（秒）
+
+    Returns:
+        缓存数据，如果不存在或已过期返回None
+    """
+    if key not in _api_cache:
+        return None
+
+    cached = _api_cache[key]
+    # 检查是否过期
+    if time.time() - cached["timestamp"] >= expire_seconds:
+        # 过期则删除
+        del _api_cache[key]
+        return None
+
+    return cached["data"]
+
+
+def _set_cached(key: str, data: Dict[str, Any], expire_seconds: int) -> None:
+    """
+    设置缓存数据
+
+    Args:
+        key: 缓存键
+        data: 缓存数据
+        expire_seconds: 过期时间（秒）
+    """
+    if len(_api_cache) >= _MAX_API_CACHE_SIZE:
+        # 清理过期缓存
+        _cleanup_expired_cache()
+        # 如果仍然满了，清理最旧的缓存
+        if len(_api_cache) >= _MAX_API_CACHE_SIZE:
+            oldest_key = min(_api_cache.keys(), key=lambda k: _api_cache[k]["timestamp"])
+            del _api_cache[oldest_key]
+
+    _api_cache[key] = {
+        "data": data,
+        "timestamp": time.time(),
+        "expire_seconds": expire_seconds
+    }
+
+
+def _cleanup_expired_cache() -> int:
+    """
+    清理过期的缓存
+
+    Returns:
+        清理的缓存数量
+    """
+    current_time = time.time()
+    expired_keys = [
+        key for key, cached in _api_cache.items()
+        if current_time - cached["timestamp"] >= cached["expire_seconds"]
+    ]
+    for key in expired_keys:
+        del _api_cache[key]
+    return len(expired_keys)
 
 def cache_api_response(expire_seconds: int = 3600):
     """
     API响应缓存装饰器
     根据请求参数生成唯一缓存键，缓存JSON响应
+
+    Args:
+        expire_seconds: 缓存过期时间（秒），默认3600秒（1小时）
     """
     def decorator(f):
         @wraps(f)
@@ -38,20 +110,21 @@ def cache_api_response(expire_seconds: int = 3600):
             }
             cache_key = hashlib.md5(json.dumps(key_data, sort_keys=True).encode('utf-8')).hexdigest()
             
-            # 检查缓存是否存在
-            if cache_key in _api_cache:
-                return jsonify(_api_cache[cache_key])
+            # 检查缓存是否存在且未过期
+            cached_data = _get_cached(cache_key, expire_seconds)
+            if cached_data is not None:
+                return jsonify(cached_data)
             
             # 执行原函数
             response = f(*args, **kwargs)
             
             # 缓存响应（仅缓存成功的响应）
-            if response.status_code == 200 and len(_api_cache) < _MAX_API_CACHE_SIZE:
+            if response.status_code == 200:
                 try:
                     # 尝试解析响应数据
                     response_data = response.get_json()
                     if response_data and response_data.get('success', False):
-                        _api_cache[cache_key] = response_data
+                        _set_cached(cache_key, response_data, expire_seconds)
                 except Exception:
                     pass
             
@@ -64,11 +137,24 @@ def clear_api_cache() -> None:
     global _api_cache
     _api_cache.clear()
 
-def get_api_cache_stats() -> Dict[str, int]:
-    """获取API缓存统计信息"""
+
+def get_api_cache_stats() -> Dict[str, Any]:
+    """
+    获取API缓存统计信息
+
+    Returns:
+        包含缓存大小、最大大小和过期缓存数量的字典
+    """
+    current_time = time.time()
+    expired_count = sum(
+        1 for cached in _api_cache.values()
+        if current_time - cached["timestamp"] >= cached["expire_seconds"]
+    )
     return {
         'cache_size': len(_api_cache),
-        'max_cache_size': _MAX_API_CACHE_SIZE
+        'max_cache_size': _MAX_API_CACHE_SIZE,
+        'expired_count': expired_count,
+        'default_expire_seconds': _DEFAULT_CACHE_EXPIRE_SECONDS
     }
 
 

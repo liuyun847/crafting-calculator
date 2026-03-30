@@ -6,12 +6,18 @@
 - 生产链计算与可视化
 - 配方管理（CRUD）
 - 路径切换
+
+安全配置：
+- Secret Key: 优先从环境变量 FLASK_SECRET_KEY 读取，否则使用开发密钥
+- CSRF 保护: 使用 Flask-WTF，API 端点已豁免（纯 API 服务）
 """
 
 import os
 import sys
+import warnings
 from typing import Optional
 from flask import Flask, render_template, request, jsonify, session
+from flask_wtf.csrf import CSRFProtect
 
 # 添加项目根目录到路径
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -58,11 +64,35 @@ def get_session() -> WebSession:
     return base_get_session(session_class=WebSession)
 
 
+# ============================================================
+# Secret Key 配置
+# ============================================================
+# 优先从环境变量读取密钥，用于生产环境
+# 如果环境变量不存在，使用固定的开发密钥（仅用于开发环境）
+_SECRET_KEY = os.environ.get("FLASK_SECRET_KEY")
+
+if _SECRET_KEY is None:
+    # 开发环境使用固定密钥（便于调试和测试）
+    _SECRET_KEY = "dev-secret-key-for-web-gui-only"
+    # 在生产环境警告用户设置环境变量
+    if os.environ.get("FLASK_ENV") == "production":
+        warnings.warn(
+            "生产环境应设置环境变量 FLASK_SECRET_KEY 以确保安全！",
+            UserWarning,
+            stacklevel=2,
+        )
+
 app = Flask(__name__,
             template_folder='templates',
             static_folder='static'
             )
-app.secret_key = os.urandom(24)
+app.secret_key = _SECRET_KEY
+
+# ============================================================
+# CSRF 保护配置
+# ============================================================
+# 初始化 CSRF 保护
+csrf = CSRFProtect(app)
 
 
 # ========================================
@@ -160,6 +190,7 @@ def get_games():
 
 
 @app.route("/api/select-game", methods=["POST"])
+@csrf.exempt
 def api_select_game():
     """选择配方文件"""
     response = select_game_api()
@@ -202,6 +233,7 @@ def get_recipe(recipe_name):
 
 
 @app.route("/api/recipes", methods=["POST"])
+@csrf.exempt
 def create_recipe():
     """创建新配方"""
     response = create_recipe_api()
@@ -215,6 +247,7 @@ def create_recipe():
 
 
 @app.route("/api/recipes/<recipe_name>", methods=["PUT"])
+@csrf.exempt
 def update_recipe(recipe_name):
     """更新配方"""
     response = update_recipe_api(recipe_name)
@@ -228,6 +261,7 @@ def update_recipe(recipe_name):
 
 
 @app.route("/api/recipes/<recipe_name>", methods=["DELETE"])
+@csrf.exempt
 def delete_recipe(recipe_name):
     """删除配方"""
     response = delete_recipe_api(recipe_name)
@@ -245,6 +279,7 @@ def delete_recipe(recipe_name):
 # ========================================
 
 @app.route("/api/calculate", methods=["POST"])
+@csrf.exempt
 def calculate():
     """计算生产链"""
     return calculate_api(include_alternatives=False)
@@ -261,6 +296,7 @@ def get_alternatives():
 # ========================================
 
 @app.route("/api/cache/clear", methods=["POST"])
+@csrf.exempt
 def clear_cache():
     """清除所有缓存"""
     # 清除API层缓存

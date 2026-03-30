@@ -10,6 +10,9 @@ import subprocess
 import sys
 import os
 
+# 检查 Playwright 是否可用，不可用时跳过整个模块
+pytest.importorskip("playwright")
+
 # 设置项目根目录
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)

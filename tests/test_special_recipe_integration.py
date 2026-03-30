@@ -199,7 +199,7 @@ def byproduct_pool():
     Yields:
         ByproductPool: 副产品池实例
     """
-    from tests.test_byproduct_pool import ByproductPool
+    from calculator import ByproductPool
     pool = ByproductPool()
     yield pool
     pool.clear()

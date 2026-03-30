@@ -2,12 +2,18 @@
 自动化建造游戏通用合成计算器 - Web 测试接口
 
 提供与终端程序完全一致的 Web 交互界面，支持浏览器自动化测试。
+
+安全配置：
+- Secret Key: 优先从环境变量 FLASK_SECRET_KEY 读取，否则使用开发密钥
+- CSRF 保护: 使用 Flask-WTF，API 端点已豁免（纯 API 服务）
 """
 
 import os
 import sys
+import warnings
 from typing import Dict, Any
 from flask import Flask, render_template, request, jsonify, session
+from flask_wtf.csrf import CSRFProtect
 
 # 导入公共API模块
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -29,8 +35,32 @@ from shared.api import (
 )
 
 
+# ============================================================
+# Secret Key 配置
+# ============================================================
+# 优先从环境变量读取密钥，用于生产环境
+# 如果环境变量不存在，使用固定的开发密钥（仅用于开发环境）
+_SECRET_KEY = os.environ.get("FLASK_SECRET_KEY")
+
+if _SECRET_KEY is None:
+    # 开发环境使用固定密钥（便于调试和测试）
+    _SECRET_KEY = "dev-secret-key-for-web-server-only"
+    # 在生产环境警告用户设置环境变量
+    if os.environ.get("FLASK_ENV") == "production":
+        warnings.warn(
+            "生产环境应设置环境变量 FLASK_SECRET_KEY 以确保安全！",
+            UserWarning,
+            stacklevel=2,
+        )
+
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = _SECRET_KEY
+
+# ============================================================
+# CSRF 保护配置
+# ============================================================
+# 初始化 CSRF 保护
+csrf = CSRFProtect(app)
 
 
 @app.route("/")
@@ -40,6 +70,7 @@ def index():
 
 
 @app.route("/api/terminal", methods=["POST"])
+@csrf.exempt
 def terminal():
     """处理终端命令"""
     data = request.get_json()
@@ -56,6 +87,7 @@ def terminal():
 
 
 @app.route("/api/reset", methods=["POST"])
+@csrf.exempt
 def reset():
     """重置会话"""
     web_session = get_session()
@@ -71,6 +103,7 @@ def get_games():
 
 
 @app.route("/api/select-game", methods=["POST"])
+@csrf.exempt
 def select_game():
     """选择配方文件（终端模式，返回命令输出）"""
     data = request.get_json()
@@ -126,6 +159,7 @@ def get_recipe(recipe_name):
 
 
 @app.route("/api/recipes", methods=["POST"])
+@csrf.exempt
 def create_recipe():
     """
     创建新配方
@@ -148,6 +182,7 @@ def create_recipe():
 
 
 @app.route("/api/recipes/<recipe_name>", methods=["PUT"])
+@csrf.exempt
 def update_recipe(recipe_name):
     """
     更新现有配方（支持部分更新）
@@ -172,6 +207,7 @@ def update_recipe(recipe_name):
 
 
 @app.route("/api/recipes/<recipe_name>", methods=["DELETE"])
+@csrf.exempt
 def delete_recipe(recipe_name):
     """
     删除配方
@@ -188,6 +224,7 @@ def delete_recipe(recipe_name):
 
 
 @app.route("/api/calculate", methods=["POST"])
+@csrf.exempt
 def calculate_enhanced():
     """
     计算生产链（增强版）
@@ -219,6 +256,7 @@ def calculate_enhanced():
 
 
 @app.route("/api/calculate/switch-path", methods=["POST"])
+@csrf.exempt
 def switch_path():
     """
     切换到指定路径

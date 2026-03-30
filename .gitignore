@@ -46,3 +46,13 @@ config.json
 
 # Project specific
 .trae/
+
+# Testing & Coverage
+.coverage
+htmlcov/
+
+# Log files
+*.log
+
+# Temporary recipe files
+recipes/test_cache.json
