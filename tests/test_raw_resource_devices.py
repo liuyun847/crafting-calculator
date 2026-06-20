@@ -80,14 +80,15 @@ def raw_resource_calculator(temp_dir, raw_resource_recipes):
         CraftingCalculator: 计算器实例
     """
     from data_manager import RecipeManager
-    import json
+    import yaml
     import os
 
     manager = RecipeManager(recipes_dir=temp_dir)
 
-    recipe_file = os.path.join(temp_dir, "raw_resource_game.json")
+    recipe_file = os.path.join(temp_dir, "raw_resource_game.yaml")
     with open(recipe_file, "w", encoding="utf-8") as f:
-        json.dump(raw_resource_recipes, f, indent=2, ensure_ascii=False)
+        yaml.dump(raw_resource_recipes, f, allow_unicode=True,
+                  sort_keys=False, default_flow_style=False)
 
     manager.load_recipe_file("raw_resource_game")
 

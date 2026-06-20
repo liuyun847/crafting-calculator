@@ -6,7 +6,7 @@
 
 import os
 from typing import Dict, List, Any, Optional, Tuple
-from shared.utils import ensure_directory_exists, save_json_file, load_json_file
+from shared.utils import ensure_directory_exists, save_yaml_file
 
 
 class RecipeManager:
@@ -38,7 +38,7 @@ class RecipeManager:
         games = []
         if os.path.exists(self.recipes_dir):
             for filename in os.listdir(self.recipes_dir):
-                if filename.endswith(".json"):
+                if filename.endswith(".yaml") or filename.endswith(".yml"):
                     game_name = os.path.splitext(filename)[0]
                     games.append(game_name)
         return sorted(games)
@@ -55,18 +55,21 @@ class RecipeManager:
 
         Raises:
             FileNotFoundError: 当配方文件不存在时
-            json.JSONDecodeError: 当配方文件格式错误时
+            yaml.YAMLError: 当配方文件格式错误时
         """
-        import json
-        filename = os.path.join(self.recipes_dir, f"{game_name}.json")
+        import yaml
+        filename = os.path.join(self.recipes_dir, f"{game_name}.yaml")
 
         if not os.path.exists(filename):
-            raise FileNotFoundError(f"配方文件 '{filename}' 不存在")
-        
+            # 兼容 .yml 扩展名
+            filename = os.path.join(self.recipes_dir, f"{game_name}.yml")
+            if not os.path.exists(filename):
+                raise FileNotFoundError(f"配方文件 '{game_name}.yaml' 不存在")
+
         with open(filename, "r", encoding="utf-8") as f:
             try:
-                self.recipes = json.load(f)
-            except json.JSONDecodeError as e:
+                self.recipes = yaml.safe_load(f) or {}
+            except yaml.YAMLError as e:
                 raise e
 
         self.current_game = game_name
@@ -88,8 +91,8 @@ class RecipeManager:
                 return
             game_name = self.current_game
 
-        filename = os.path.join(self.recipes_dir, f"{game_name}.json")
-        save_json_file(filename, self.recipes)
+        filename = os.path.join(self.recipes_dir, f"{game_name}.yaml")
+        save_yaml_file(filename, self.recipes)
 
         self.current_game = game_name
 
@@ -234,7 +237,7 @@ class RecipeManager:
         Raises:
             FileExistsError: 当配方文件已存在时
         """
-        filename = os.path.join(self.recipes_dir, f"{game_name}.json")
+        filename = os.path.join(self.recipes_dir, f"{game_name}.yaml")
 
         if os.path.exists(filename):
             raise FileExistsError(f"游戏 '{game_name}' 的配方文件已存在")

@@ -4,8 +4,7 @@ version = "0.1.0"
 description = "自动化建造游戏通用合成计算器，用于计算生产链和所需设备数量"
 requires-python = ">=3.12"
 dependencies = [
-    "flask>=2.0",
-    "flask-wtf>=1.2.0",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]

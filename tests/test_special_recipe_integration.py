@@ -6,7 +6,7 @@
 """
 import pytest
 import tempfile
-import json
+import yaml
 import os
 from typing import Dict, Any
 
@@ -458,9 +458,10 @@ class TestDoublingRecipeChain:
 
         # 创建配方管理器并加载配方
         manager = RecipeManager(recipes_dir=temp_dir)
-        recipe_file = os.path.join(temp_dir, "doubling_test.json")
+        recipe_file = os.path.join(temp_dir, "doubling_test.yaml")
         with open(recipe_file, "w", encoding="utf-8") as f:
-            json.dump(doubling_chain_recipes, f, indent=2, ensure_ascii=False)
+            yaml.dump(doubling_chain_recipes, f, allow_unicode=True,
+                      sort_keys=False, default_flow_style=False)
         manager.load_recipe_file("doubling_test")
 
         # 创建计算器
@@ -583,9 +584,10 @@ class TestCatalystRecipeChain:
 
         # 创建配方管理器并加载配方
         manager = RecipeManager(recipes_dir=temp_dir)
-        recipe_file = os.path.join(temp_dir, "catalyst_test.json")
+        recipe_file = os.path.join(temp_dir, "catalyst_test.yaml")
         with open(recipe_file, "w", encoding="utf-8") as f:
-            json.dump(catalyst_chain_recipes, f, indent=2, ensure_ascii=False)
+            yaml.dump(catalyst_chain_recipes, f, allow_unicode=True,
+                      sort_keys=False, default_flow_style=False)
         manager.load_recipe_file("catalyst_test")
 
         # 创建计算器
@@ -645,9 +647,10 @@ class TestMixedSpecialRecipes:
 
         # 创建配方管理器并加载配方
         manager = RecipeManager(recipes_dir=temp_dir)
-        recipe_file = os.path.join(temp_dir, "mixed_test.json")
+        recipe_file = os.path.join(temp_dir, "mixed_test.yaml")
         with open(recipe_file, "w", encoding="utf-8") as f:
-            json.dump(mixed_special_recipes, f, indent=2, ensure_ascii=False)
+            yaml.dump(mixed_special_recipes, f, allow_unicode=True,
+                      sort_keys=False, default_flow_style=False)
         manager.load_recipe_file("mixed_test")
 
         # 创建计算器

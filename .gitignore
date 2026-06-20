@@ -42,7 +42,7 @@ Thumbs.db
 *.bak
 
 # Config files (user-specific)
-config.json
+config.yaml
 
 # Project specific
 .trae/
@@ -55,4 +55,4 @@ htmlcov/
 *.log
 
 # Temporary recipe files
-recipes/test_cache.json
+recipes/test_cache.yaml

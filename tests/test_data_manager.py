@@ -4,7 +4,7 @@
 测试 data_manager 模块的所有功能
 """
 import pytest
-import json
+import yaml
 import os
 from data_manager import RecipeManager
 
@@ -43,8 +43,9 @@ class TestGetAvailableGames:
 
     def test_single_file(self, temp_dir):
         """测试单个文件"""
-        with open(os.path.join(temp_dir, "game1.json"), "w", encoding="utf-8") as f:
-            json.dump({}, f)
+        with open(os.path.join(temp_dir, "game1.yaml"), "w", encoding="utf-8") as f:
+            yaml.dump({}, f, allow_unicode=True, sort_keys=False,
+                      default_flow_style=False)
 
         manager = RecipeManager(recipes_dir=temp_dir)
         games = manager.get_available_games()
@@ -54,8 +55,9 @@ class TestGetAvailableGames:
     def test_multiple_files(self, temp_dir):
         """测试多个文件"""
         for name in ["game1", "game2", "game3"]:
-            with open(os.path.join(temp_dir, f"{name}.json"), "w", encoding="utf-8") as f:
-                json.dump({}, f)
+            with open(os.path.join(temp_dir, f"{name}.yaml"), "w", encoding="utf-8") as f:
+                yaml.dump({}, f, allow_unicode=True, sort_keys=False,
+                          default_flow_style=False)
 
         manager = RecipeManager(recipes_dir=temp_dir)
         games = manager.get_available_games()
@@ -65,18 +67,20 @@ class TestGetAvailableGames:
     def test_sorted_results(self, temp_dir):
         """测试排序结果"""
         for name in ["zebra", "alpha", "beta"]:
-            with open(os.path.join(temp_dir, f"{name}.json"), "w", encoding="utf-8") as f:
-                json.dump({}, f)
+            with open(os.path.join(temp_dir, f"{name}.yaml"), "w", encoding="utf-8") as f:
+                yaml.dump({}, f, allow_unicode=True, sort_keys=False,
+                          default_flow_style=False)
 
         manager = RecipeManager(recipes_dir=temp_dir)
         games = manager.get_available_games()
 
         assert games == ["alpha", "beta", "zebra"]
 
-    def test_ignores_non_json_files(self, temp_dir):
-        """测试忽略非 JSON 文件"""
-        with open(os.path.join(temp_dir, "game1.json"), "w", encoding="utf-8") as f:
-            json.dump({}, f)
+    def test_ignores_non_yaml_files(self, temp_dir):
+        """测试忽略非 YAML 文件"""
+        with open(os.path.join(temp_dir, "game1.yaml"), "w", encoding="utf-8") as f:
+            yaml.dump({}, f, allow_unicode=True, sort_keys=False,
+                      default_flow_style=False)
         with open(os.path.join(temp_dir, "readme.txt"), "w", encoding="utf-8") as f:
             f.write("readme")
         with open(os.path.join(temp_dir, "data.dat"), "w", encoding="utf-8") as f:
@@ -93,9 +97,10 @@ class TestLoadRecipeFile:
 
     def test_load_existing_file(self, temp_dir, sample_recipes):
         """测试加载存在的文件"""
-        recipe_file = os.path.join(temp_dir, "test_game.json")
+        recipe_file = os.path.join(temp_dir, "test_game.yaml")
         with open(recipe_file, "w", encoding="utf-8") as f:
-            json.dump(sample_recipes, f)
+            yaml.dump(sample_recipes, f, allow_unicode=True, sort_keys=False,
+                      default_flow_style=False)
 
         manager = RecipeManager(recipes_dir=temp_dir)
         loaded_recipes = manager.load_recipe_file("test_game")
@@ -110,15 +115,15 @@ class TestLoadRecipeFile:
         with pytest.raises(FileNotFoundError):
             manager.load_recipe_file("nonexistent")
 
-    def test_load_invalid_json(self, temp_dir):
-        """测试加载无效 JSON"""
-        invalid_file = os.path.join(temp_dir, "invalid.json")
+    def test_load_invalid_yaml(self, temp_dir):
+        """测试加载无效 YAML"""
+        invalid_file = os.path.join(temp_dir, "invalid.yaml")
         with open(invalid_file, "w", encoding="utf-8") as f:
-            f.write("{ invalid json")
+            f.write("{ invalid: yaml: content: [")
 
         manager = RecipeManager(recipes_dir=temp_dir)
 
-        with pytest.raises(json.JSONDecodeError):
+        with pytest.raises(yaml.YAMLError):
             manager.load_recipe_file("invalid")
 
 
@@ -133,9 +138,9 @@ class TestSaveRecipeFile:
 
         manager.save_recipe_file()
 
-        recipe_file = os.path.join(temp_dir, "test_game.json")
+        recipe_file = os.path.join(temp_dir, "test_game.yaml")
         with open(recipe_file, "r", encoding="utf-8") as f:
-            saved_recipes = json.load(f)
+            saved_recipes = yaml.safe_load(f)
 
         assert saved_recipes == sample_recipes
 
@@ -148,9 +153,9 @@ class TestSaveRecipeFile:
 
         assert manager.current_game == "new_game"
 
-        recipe_file = os.path.join(temp_dir, "new_game.json")
+        recipe_file = os.path.join(temp_dir, "new_game.yaml")
         with open(recipe_file, "r", encoding="utf-8") as f:
-            saved_recipes = json.load(f)
+            saved_recipes = yaml.safe_load(f)
 
         assert saved_recipes == sample_recipes
 
@@ -179,9 +184,9 @@ class TestAddRecipe:
         assert "新配方" in manager.recipes
         assert manager.recipes["新配方"]["device"] == "设备"
 
-        recipe_file = os.path.join(temp_dir, "test_game.json")
+        recipe_file = os.path.join(temp_dir, "test_game.yaml")
         with open(recipe_file, "r", encoding="utf-8") as f:
-            saved_recipes = json.load(f)
+            saved_recipes = yaml.safe_load(f)
 
         assert "新配方" in saved_recipes
 
@@ -415,15 +420,16 @@ class TestCreateNewRecipeFile:
         assert manager.current_game == "new_game"
         assert manager.recipes == {}
 
-        recipe_file = os.path.join(temp_dir, "new_game.json")
+        recipe_file = os.path.join(temp_dir, "new_game.yaml")
         assert os.path.exists(recipe_file)
 
     def test_create_existing_file(self, temp_dir):
         """测试创建已存在的文件"""
         manager = RecipeManager(recipes_dir=temp_dir)
 
-        with open(os.path.join(temp_dir, "existing.json"), "w", encoding="utf-8") as f:
-            json.dump({}, f)
+        with open(os.path.join(temp_dir, "existing.yaml"), "w", encoding="utf-8") as f:
+            yaml.dump({}, f, allow_unicode=True, sort_keys=False,
+                      default_flow_style=False)
 
         with pytest.raises(FileExistsError):
             manager.create_new_recipe_file("existing")
