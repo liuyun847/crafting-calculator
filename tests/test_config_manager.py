@@ -4,7 +4,7 @@
 测试 config_manager 模块的所有功能
 """
 import pytest
-import json
+import yaml
 import os
 from config_manager import ConfigManager
 
@@ -14,7 +14,7 @@ class TestConfigManagerInit:
 
     def test_default_init(self, temp_dir):
         """测试默认初始化"""
-        config_file = os.path.join(temp_dir, "config.json")
+        config_file = os.path.join(temp_dir, "config.yaml")
         manager = ConfigManager(config_file=config_file)
 
         assert manager.config_file == config_file
@@ -26,15 +26,15 @@ class TestConfigManagerInit:
 
         assert manager.config == {"last_game": "example"}
 
-    def test_init_with_invalid_json(self, invalid_json_file):
-        """测试使用无效 JSON 文件初始化"""
-        manager = ConfigManager(config_file=invalid_json_file)
+    def test_init_with_invalid_yaml(self, invalid_yaml_file):
+        """测试使用无效 YAML 文件初始化"""
+        manager = ConfigManager(config_file=invalid_yaml_file)
 
         assert manager.config == {}
 
     def test_init_with_nonexistent_file(self, temp_dir):
         """测试使用不存在的文件初始化"""
-        config_file = os.path.join(temp_dir, "nonexistent.json")
+        config_file = os.path.join(temp_dir, "nonexistent.yaml")
         manager = ConfigManager(config_file=config_file)
 
         assert manager.config == {}
@@ -52,22 +52,22 @@ class TestLoadConfig:
 
     def test_load_nonexistent_config(self, temp_dir):
         """测试加载不存在的配置"""
-        config_file = os.path.join(temp_dir, "nonexistent.json")
+        config_file = os.path.join(temp_dir, "nonexistent.yaml")
         manager = ConfigManager(config_file=config_file)
         manager.load_config()
 
         assert manager.config == {}
 
-    def test_load_invalid_json(self, invalid_json_file):
-        """测试加载无效 JSON"""
-        manager = ConfigManager(config_file=invalid_json_file)
+    def test_load_invalid_yaml(self, invalid_yaml_file):
+        """测试加载无效 YAML"""
+        manager = ConfigManager(config_file=invalid_yaml_file)
         manager.load_config()
 
         assert manager.config == {}
 
     def test_load_complex_config(self, temp_dir):
         """测试加载复杂配置"""
-        config_file = os.path.join(temp_dir, "complex.json")
+        config_file = os.path.join(temp_dir, "complex.yaml")
         complex_config = {
             "last_game": "example",
             "theme": "dark",
@@ -79,7 +79,8 @@ class TestLoadConfig:
         }
 
         with open(config_file, "w", encoding="utf-8") as f:
-            json.dump(complex_config, f)
+            yaml.dump(complex_config, f, allow_unicode=True, sort_keys=False,
+                      default_flow_style=False)
 
         manager = ConfigManager(config_file=config_file)
         manager.load_config()
@@ -92,14 +93,14 @@ class TestSaveConfig:
 
     def test_save_new_config(self, temp_dir):
         """测试保存新配置"""
-        config_file = os.path.join(temp_dir, "new_config.json")
+        config_file = os.path.join(temp_dir, "new_config.yaml")
         manager = ConfigManager(config_file=config_file)
 
         manager.config = {"last_game": "test_game"}
         manager.save_config()
 
         with open(config_file, "r", encoding="utf-8") as f:
-            saved_config = json.load(f)
+            saved_config = yaml.safe_load(f)
 
         assert saved_config == {"last_game": "test_game"}
 
@@ -111,13 +112,13 @@ class TestSaveConfig:
         manager.save_config()
 
         with open(sample_config_file, "r", encoding="utf-8") as f:
-            saved_config = json.load(f)
+            saved_config = yaml.safe_load(f)
 
         assert saved_config == {"last_game": "updated_game"}
 
     def test_save_complex_config(self, temp_dir):
         """测试保存复杂配置"""
-        config_file = os.path.join(temp_dir, "complex.json")
+        config_file = os.path.join(temp_dir, "complex.yaml")
         manager = ConfigManager(config_file=config_file)
 
         complex_config = {
@@ -134,7 +135,7 @@ class TestSaveConfig:
         manager.save_config()
 
         with open(config_file, "r", encoding="utf-8") as f:
-            saved_config = json.load(f)
+            saved_config = yaml.safe_load(f)
 
         assert saved_config == complex_config
 
@@ -152,7 +153,7 @@ class TestGetLastGame:
 
     def test_get_last_game_not_exists(self, temp_dir):
         """测试获取不存在的 last_game"""
-        config_file = os.path.join(temp_dir, "empty.json")
+        config_file = os.path.join(temp_dir, "empty.yaml")
         manager = ConfigManager(config_file=config_file)
 
         last_game = manager.get_last_game()
@@ -161,9 +162,10 @@ class TestGetLastGame:
 
     def test_get_last_game_empty_value(self, temp_dir):
         """测试获取空值的 last_game"""
-        config_file = os.path.join(temp_dir, "empty_value.json")
+        config_file = os.path.join(temp_dir, "empty_value.yaml")
         with open(config_file, "w", encoding="utf-8") as f:
-            json.dump({"last_game": ""}, f)
+            yaml.dump({"last_game": ""}, f, allow_unicode=True,
+                      sort_keys=False, default_flow_style=False)
 
         manager = ConfigManager(config_file=config_file)
 
@@ -177,7 +179,7 @@ class TestSetLastGame:
 
     def test_set_last_game_new(self, temp_dir):
         """测试设置新的 last_game"""
-        config_file = os.path.join(temp_dir, "new.json")
+        config_file = os.path.join(temp_dir, "new.yaml")
         manager = ConfigManager(config_file=config_file)
 
         manager.set_last_game("test_game")
@@ -185,7 +187,7 @@ class TestSetLastGame:
         assert manager.config["last_game"] == "test_game"
 
         with open(config_file, "r", encoding="utf-8") as f:
-            saved_config = json.load(f)
+            saved_config = yaml.safe_load(f)
 
         assert saved_config == {"last_game": "test_game"}
 
@@ -198,13 +200,13 @@ class TestSetLastGame:
         assert manager.config["last_game"] == "updated_game"
 
         with open(sample_config_file, "r", encoding="utf-8") as f:
-            saved_config = json.load(f)
+            saved_config = yaml.safe_load(f)
 
         assert saved_config == {"last_game": "updated_game"}
 
     def test_set_last_game_multiple_times(self, temp_dir):
         """测试多次设置 last_game"""
-        config_file = os.path.join(temp_dir, "multiple.json")
+        config_file = os.path.join(temp_dir, "multiple.yaml")
         manager = ConfigManager(config_file=config_file)
 
         manager.set_last_game("game1")
@@ -217,7 +219,7 @@ class TestSetLastGame:
         assert manager.config["last_game"] == "game3"
 
         with open(config_file, "r", encoding="utf-8") as f:
-            saved_config = json.load(f)
+            saved_config = yaml.safe_load(f)
 
         assert saved_config == {"last_game": "game3"}
 
@@ -227,24 +229,24 @@ class TestEdgeCases:
 
     def test_config_with_special_characters(self, temp_dir):
         """测试包含特殊字符的配置"""
-        config_file = os.path.join(temp_dir, "special.json")
+        config_file = os.path.join(temp_dir, "special.yaml")
         manager = ConfigManager(config_file=config_file)
 
         manager.config = {
             "last_game": "游戏名称",
-            "path": "C:\\路径\\文件.json",
+            "path": "C:\\路径\\文件.yaml",
             "unicode": "中文测试"
         }
         manager.save_config()
 
         with open(config_file, "r", encoding="utf-8") as f:
-            saved_config = json.load(f)
+            saved_config = yaml.safe_load(f)
 
         assert saved_config == manager.config
 
     def test_config_with_numbers(self, temp_dir):
         """测试包含数字的配置"""
-        config_file = os.path.join(temp_dir, "numbers.json")
+        config_file = os.path.join(temp_dir, "numbers.yaml")
         manager = ConfigManager(config_file=config_file)
 
         manager.config = {
@@ -256,13 +258,13 @@ class TestEdgeCases:
         manager.save_config()
 
         with open(config_file, "r", encoding="utf-8") as f:
-            saved_config = json.load(f)
+            saved_config = yaml.safe_load(f)
 
         assert saved_config == manager.config
 
     def test_config_with_nested_structure(self, temp_dir):
         """测试嵌套结构配置"""
-        config_file = os.path.join(temp_dir, "nested.json")
+        config_file = os.path.join(temp_dir, "nested.yaml")
         manager = ConfigManager(config_file=config_file)
 
         manager.config = {
@@ -281,13 +283,13 @@ class TestEdgeCases:
         manager.save_config()
 
         with open(config_file, "r", encoding="utf-8") as f:
-            saved_config = json.load(f)
+            saved_config = yaml.safe_load(f)
 
         assert saved_config == manager.config
 
     def test_config_with_empty_values(self, temp_dir):
         """测试包含空值的配置"""
-        config_file = os.path.join(temp_dir, "empty_values.json")
+        config_file = os.path.join(temp_dir, "empty_values.yaml")
         manager = ConfigManager(config_file=config_file)
 
         manager.config = {
@@ -298,7 +300,7 @@ class TestEdgeCases:
         manager.save_config()
 
         with open(config_file, "r", encoding="utf-8") as f:
-            saved_config = json.load(f)
+            saved_config = yaml.safe_load(f)
 
         assert saved_config == manager.config
 
@@ -308,7 +310,7 @@ class TestIntegration:
 
     def test_full_config_lifecycle(self, temp_dir):
         """测试完整的配置生命周期"""
-        config_file = os.path.join(temp_dir, "lifecycle.json")
+        config_file = os.path.join(temp_dir, "lifecycle.yaml")
         manager = ConfigManager(config_file=config_file)
 
         assert manager.get_last_game() is None

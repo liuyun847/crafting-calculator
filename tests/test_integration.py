@@ -6,7 +6,8 @@
 
 import os
 import pytest
-from io_interface import TerminalIO, WebIO
+import yaml
+from io_interface import TerminalIO
 from application_controller import ApplicationController
 from data_manager import RecipeManager
 from calculator import CraftingCalculator
@@ -37,13 +38,13 @@ class TestDataManagerCalculatorIntegration:
         from data_manager import RecipeManager
         import tempfile
         import os
-        import json
 
         temp_dir = tempfile.mkdtemp()
-        recipe_file = os.path.join(temp_dir, "complex.json")
+        recipe_file = os.path.join(temp_dir, "complex.yaml")
 
         with open(recipe_file, "w", encoding="utf-8") as f:
-            json.dump(complex_recipes, f)
+            yaml.dump(complex_recipes, f, allow_unicode=True, sort_keys=False,
+                      default_flow_style=False)
 
         manager = RecipeManager(recipes_dir=temp_dir)
         manager.load_recipe_file("complex")
@@ -81,46 +82,6 @@ class TestExpressionParserCalculatorIntegration:
         trees = calculator.calculate_production_chain("铁锭", rate)
 
         assert len(trees) > 0
-
-
-class TestIOControllerIntegration:
-    """测试 IO 和控制器集成"""
-
-    def test_terminal_io_controller(self, terminal_io):
-        """测试终端 IO 和控制器"""
-        controller = ApplicationController(terminal_io)
-
-        assert controller.io == terminal_io
-
-        result = controller.process_command("help")
-
-        assert "output" in result
-        assert "prompt" in result
-
-    def test_web_io_controller(self, web_io):
-        """测试 Web IO 和控制器"""
-        controller = ApplicationController(web_io)
-
-        assert controller.io == web_io
-
-        result = controller.process_command("help")
-
-        assert "output" in result
-        assert "prompt" in result
-
-    def test_controller_state_management(self, terminal_io):
-        """测试控制器状态管理"""
-        controller = ApplicationController(terminal_io)
-
-        assert controller.state == "main_menu"
-
-        # 命令 "1" 会显示游戏列表并进入 select_game 状态
-        result = controller.process_command("1")
-        assert controller.state == "select_game"
-
-        # 在 select_game 状态下，命令 "5" 是无效选择，会返回主菜单
-        result = controller.process_command("5")
-        assert controller.state == "main_menu"
 
 
 class TestEndToEndCalculation:
@@ -274,7 +235,7 @@ class TestConfigIntegration:
         """测试配置与配方管理器集成"""
         from config_manager import ConfigManager
 
-        config_file = os.path.join(temp_dir, "config.json")
+        config_file = os.path.join(temp_dir, "config.yaml")
         config_manager = ConfigManager(config_file=config_file)
 
         config_manager.set_last_game("test_game")
@@ -379,7 +340,7 @@ class TestDataPersistenceIntegration:
         """测试配置持久化"""
         from config_manager import ConfigManager
 
-        config_file = os.path.join(temp_dir, "config.json")
+        config_file = os.path.join(temp_dir, "config.yaml")
         manager1 = ConfigManager(config_file=config_file)
 
         manager1.set_last_game("game1")

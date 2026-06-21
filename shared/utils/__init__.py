@@ -252,24 +252,31 @@ def ensure_directory_exists(directory_path: str) -> None:
         os.makedirs(directory_path)
 
 
-def save_json_file(file_path: str, data: Any, indent: int = 2, ensure_ascii: bool = False) -> None:
+def save_yaml_file(file_path: str, data: Any, indent: int = 2, allow_unicode: bool = True) -> None:
     """
-    保存数据到JSON文件，自动处理编码和格式
+    保存数据到YAML文件，自动处理编码和格式
 
     Args:
         file_path: 文件路径
         data: 要保存的数据
         indent: 缩进空格数
-        ensure_ascii: 是否确保ASCII编码
+        allow_unicode: 是否允许Unicode字符（不转义中文）
     """
-    import json
+    import yaml
     with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=indent, ensure_ascii=ensure_ascii)
+        yaml.dump(
+            data,
+            f,
+            indent=indent,
+            allow_unicode=allow_unicode,
+            sort_keys=False,
+            default_flow_style=False,
+        )
 
 
-def load_json_file(file_path: str, default: Optional[Any] = None) -> Any:
+def load_yaml_file(file_path: str, default: Optional[Any] = None) -> Any:
     """
-    从JSON文件加载数据，自动处理编码和异常
+    从YAML文件加载数据，自动处理编码和异常
 
     Args:
         file_path: 文件路径
@@ -278,15 +285,15 @@ def load_json_file(file_path: str, default: Optional[Any] = None) -> Any:
     Returns:
         加载的数据或默认值
     """
-    import json
     import os
+    import yaml
     if not os.path.exists(file_path):
         return default
-    
+
     try:
         with open(file_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
+            return yaml.safe_load(f)
+    except (yaml.YAMLError, IOError):
         return default
 
 
@@ -301,6 +308,6 @@ __all__ = [
     'traverse_tree',
     'flatten_tree',
     'ensure_directory_exists',
-    'save_json_file',
-    'load_json_file',
+    'save_yaml_file',
+    'load_yaml_file',
 ]
