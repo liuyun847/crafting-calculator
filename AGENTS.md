@@ -45,7 +45,7 @@
 | 模块 | 职责 |
 |------|------|
 | `io_interface.py` | IO抽象接口，`IOInterface`基类 + `TerminalIO`实现 |
-| `application_controller.py` | 业务逻辑层，配方管理（增删改查）、路径对比、主菜单处理 |
+| `application_controller.py` | 业务逻辑层，无状态单步命令分发（`_dispatch` + 各 `_cmd_*`） |
 | `main.py` | 终端入口，创建 `TerminalIO` + `ApplicationController` |
 | `calculator.py` | 计算引擎，`CraftingNode`、`CraftingCalculator`、`PathComparisonEngine` |
 | `expression_parser.py` | 解析数学表达式和时间单位（如 `15/min` → 个/秒） |
@@ -60,12 +60,19 @@
 python main.py
 ```
 
+### 设计原则：无状态单步命令
+会话进程内存**不保存任何业务状态**，所有状态通过两种方式传递：
+- **命令参数**：一次性传入（如 `calc 铁锭 15/min`）
+- **持久化文件**：`config.yaml` 记忆当前配方文件，`recipes/*.yaml` 存配方数据
+
+每条命令独立执行（读命令 → 解析参数 → 从 config 读取上下文 → 执行 → 输出 → 不保存任何内存状态），命令间不共享内存状态。REPL 循环仅用于组合多个单步命令。
+
 ### 使用流程
-1. 程序自动加载上次选择的配方文件
-2. 选择配方文件（或创建新文件）
-3. 输入目标物品名称
-4. 输入目标生产速度（支持表达式，如 `15/min`）
-5. 查看计算结果（生产链、设备统计、基础原料）
+1. 启动后程序显示当前配方文件（从 `config.yaml` 读取）
+2. 用 `use <文件名>` 选择配方文件
+3. 用 `calc <物品> <速度>` 计算生产链
+4. 用 `alts`/`use-path` 查看或切换替代路径（每次重新计算）
+5. 用 `recipe add/set-*/delete` 管理配方
 
 ## 配方文件格式
 
@@ -103,61 +110,69 @@ last_game: 配方文件名
 ### IO抽象层架构
 - 通过 `IOInterface` 分离业务逻辑和交互方式
 - 终端实现 `TerminalIO`，易于扩展新的交互方式
+- `input()` 仅用于 REPL 读取下一条命令行，无多步阻塞输入
+
+### 无状态会话
+- `ApplicationController` 实例仅持有 `io` 和 `recipe_manager`（无状态文件操作门面）
+- 不缓存 `current_game`、`calculator`、计算结果等任何业务状态
+- 每条命令通过 `_require_game()` 从 `config.yaml` 读取当前配方文件并按需创建 `CraftingCalculator`
+- 路径切换不依赖前序 `calc` 结果，每次 `alts`/`use-path` 都重新计算
 
 ### 多路径计算与路径对比
 - **主路径自动选择：** 根据设备数量选择最优路径
+- **节点编号 `#N`：** 前序遍历编号（根=1），与 `alts`/`use-path` 命令的节点编号一致
 - **节点标记 `[+N]`：** 表示该节点有 N 条其他可选路径
-- **交互式路径切换：** `alt <节点编号>` 命令切换路径
-
-### 智能提示功能
-- 设备/物品名称建议，按使用频率排序
-- 最近使用优先，模糊搜索支持
-- 表达式实时预览（如 `15/min` → `0.25/秒`）
+- **无状态路径切换：** `alts` 列出替代路径，`use-path` 重新计算并切换（不缓存中间树）
 
 ## 常见任务
 
 ### 配方管理（增删改查）
 
-**终端模式：**
-1. 运行 `python main.py`
-2. 选择 `4. 配方管理` 进入子菜单
-3. 选择操作：`1`查看 `2`添加 `3`修改 `4`删除
+每步操作都是独立的单步命令：
+```
+recipe add <名称> --device <设备> --inputs <物品:表达式,...> --outputs <物品:表达式,...>
+recipe set-device <名称> <设备>
+recipe set-inputs <名称> <物品:表达式,...>
+recipe set-outputs <名称> <物品:表达式,...>
+recipe delete <名称>
+recipe <名称>            # 查看详情（等价于 recipe show <名称>）
+```
+
+物品列表格式：`铁矿石:10,煤:5`（表达式可省略，默认 1）
 
 ### 计算生产链
 
-**终端模式：**
-1. 选择 `2. 计算生产链`
-2. 输入目标物品和生产速度
-3. 查看结果（主路径、带 `[+N]` 标记的节点）
-4. **路径对比命令：**
-   - `alt <编号>` / `a <编号>` - 切换到替代路径
-   - `la` / `list-alt` - 列出所有带标记的节点
-   - `h` / `help` - 显示帮助
-   - `q` / `quit` - 退出
+```
+calc <物品> <速度>                                # 计算主路径，输出节点编号和 [+N] 标记
+alts <物品> <速度> <节点编号>                     # 查看该节点的所有替代路径详情
+use-path <物品> <速度> <节点编号> <路径编号>      # 重新计算并切换到指定替代路径
+```
+
+`alts` 和 `use-path` 每次都重新计算，无需先执行 `calc`，命令间无状态依赖。
 
 ### 终端命令格式
 
-**主菜单：**
+**REPL 命令（每条独立无状态）：**
 ```
-1              # 选择配方文件
-1 <序号>       # 直接选择指定配方文件
-2              # 计算生产链
-2 <物品> <速度> # 直接计算
-3              # 查看物品列表
-4              # 配方管理
-5/exit/quit    # 退出
-help           # 显示帮助
-reset          # 重置会话
+games                                # 列出所有配方文件
+use <文件名>                         # 选择配方文件（持久化到 config.yaml）
+game                                 # 显示当前配方文件
+calc <物品> <速度>                   # 计算生产链（主路径）
+alts <物品> <速度> <节点编号>        # 查看节点替代路径
+use-path <物品> <速度> <节点编号> <路径编号>  # 切换到指定替代路径
+items                                # 列出所有物品
+recipes [页码] [搜索词]              # 列出配方
+recipe <名称>                        # 查看配方详情
+recipe add <名称> --device <设备> --inputs <列表> --outputs <列表>
+recipe set-device <名称> <设备>      # 修改设备
+recipe set-inputs <名称> <列表>      # 修改输入
+recipe set-outputs <名称> <列表>     # 修改输出
+recipe delete <名称>                 # 删除配方
+help                                 # 显示所有命令
+quit / exit / q                      # 退出
 ```
 
-**配方管理子菜单：**
-```
-1  # 查看配方列表
-2  # 添加配方
-3  # 修改配方
-4  # 删除配方
-5  # 返回主菜单
-```
+速度支持表达式（如 `15/min`、`8*3/2`）。命令大小写不敏感。
 
 ## 单元测试
 
@@ -178,8 +193,8 @@ python -m pytest tests/ -m integration                    # 只运行集成测�
 | data_manager.py | test_data_manager.py | 98% |
 | calculator.py | test_crafting_*.py, test_path_*.py, test_byproduct_pool.py, test_special_recipe_*.py, test_raw_resource_devices.py, test_net_output_calculation.py | 92% |
 | io_interface.py | test_io_interface.py | 92% |
-| application_controller.py | test_application_controller.py | 10% |
-| **整体** | 290+ 个测试用例 | **57%** |
+| application_controller.py | test_application_controller.py | 90%+（无状态命令测试） |
+| **整体** | 420+ 个测试用例 | **70%+** |
 
 ### 测试 Fixtures
 
@@ -217,12 +232,12 @@ markers = [
 2. **配方数量更少**（设备数相同时）
 3. **选择第一个**（以上都相同时）
 
-### 路径切换流程
-1. 计算生产链后，系统显示主路径和带标记的节点
-2. 输入 `la` 查看所有带标记的节点及其编号
-3. 输入 `alt <编号>` 查看该节点的所有替代路径
-4. 选择要切换的路径，系统显示设备数量变化
-5. 确认后重新显示生产链
+### 无状态路径切换流程
+1. `calc <物品> <速度>` 计算并显示主路径，节点带 `#N` 编号和 `[+N]` 标记，末尾列出带替代路径的节点
+2. `alts <物品> <速度> <节点编号>` 重新计算主路径，定位编号节点，输出其所有替代路径详情（含设备数差异）
+3. `use-path <物品> <速度> <节点编号> <路径编号>` 重新计算，构建切换后的树并显示完整生产链
+
+三步命令相互独立，每步都从命令参数获取完整输入，不依赖前序命令的内存状态。
 
 ## 环境信息
 
