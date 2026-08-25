@@ -26,14 +26,18 @@
 ├── main.py                  # 主程序入口（终端模式）
 ├── io_interface.py          # 输入输出抽象接口
 ├── application_controller.py # 应用程序控制器
-├── calculator.py            # 核心计算引擎
+├── calculator.py            # 核心计算引擎（CraftingCalculator）
+├── crafting_node.py         # 合成树节点（CraftingNode）
+├── path_engine.py           # 路径对比引擎（PathComparisonEngine）
+├── recipe_analyzer.py       # 配方分析（RecipeAnalyzer、RecipeType）
+├── byproduct_pool.py        # 副产品池（ByproductPool）
 ├── expression_parser.py     # 表达式解析模块
 ├── data_manager.py         # 数据管理模块
 ├── config_manager.py       # 配置管理模块
 ├── pyproject.toml          # 项目配置文件
 ├── shared/                 # 共享模块目录
 │   ├── utils/              # 工具函数目录
-│   │   └── __init__.py
+│   │   └── __init__.py     # 含 format_device_count（设备数显示格式化）
 │   └── __init__.py
 ├── tests/                  # 单元测试目录
 ├── recipes/                # 配方文件存储目录（YAML 格式）
@@ -47,11 +51,15 @@
 | `io_interface.py` | IO抽象接口，`IOInterface`基类 + `TerminalIO`实现 |
 | `application_controller.py` | 业务逻辑层，无状态单步命令分发（`_dispatch` + 各 `_cmd_*`） |
 | `main.py` | 终端入口，创建 `TerminalIO` + `ApplicationController` |
-| `calculator.py` | 计算引擎，`CraftingNode`、`CraftingCalculator`、`PathComparisonEngine` |
+| `calculator.py` | 计算引擎主模块，`CraftingCalculator`（合成树构建、设备数计算、路径标记） |
+| `crafting_node.py` | 合成树节点 `CraftingNode`（支持主/替代路径标记） |
+| `path_engine.py` | 路径对比引擎 `PathComparisonEngine`（主路径选择、替代路径查找） |
+| `recipe_analyzer.py` | 配方分析 `RecipeAnalyzer` + `RecipeType`（净产出/净消耗/设备数/配方类型） |
+| `byproduct_pool.py` | 副产品池 `ByproductPool`（副产品收集、消耗、溢出检测） |
 | `expression_parser.py` | 解析数学表达式和时间单位（如 `15/min` → 个/秒） |
 | `data_manager.py` | 配方数据的加载、保存、搜索、验证（YAML 格式） |
 | `config_manager.py` | 配置持久化，记忆上次选择的配方文件（YAML 格式） |
-| `shared/utils/` | 公共工具函数（YAML 文件读写、目录确保等） |
+| `shared/utils/` | 公共工具函数（YAML 文件读写、树遍历、设备数格式化等） |
 
 ## 运行方式
 
@@ -188,13 +196,18 @@ python -m pytest tests/ -m integration                    # 只运行集成测�
 
 | 模块 | 测试文件 | 覆盖率 |
 |------|---------|--------|
-| expression_parser.py | test_expression_parser.py | 82% |
-| config_manager.py | test_config_manager.py | 98% |
+| expression_parser.py | test_expression_parser.py | 80% |
+| config_manager.py | test_config_manager.py | 90% |
 | data_manager.py | test_data_manager.py | 98% |
-| calculator.py | test_crafting_*.py, test_path_*.py, test_byproduct_pool.py, test_special_recipe_*.py, test_raw_resource_devices.py, test_net_output_calculation.py | 92% |
-| io_interface.py | test_io_interface.py | 92% |
-| application_controller.py | test_application_controller.py | 90%+（无状态命令测试） |
-| **整体** | 420+ 个测试用例 | **70%+** |
+| calculator.py | test_crafting_calculator.py, test_integration.py, test_raw_resource_devices.py | 87% |
+| crafting_node.py | test_crafting_node.py, test_path_comparison_engine.py | 100% |
+| path_engine.py | test_path_comparison_engine.py | 98% |
+| recipe_analyzer.py | test_special_recipe_detection.py, test_net_output_calculation.py, test_special_recipe_integration.py | 89% |
+| byproduct_pool.py | test_byproduct_pool.py, test_special_recipe_integration.py | 100% |
+| shared/utils/ | test_shared_utils.py 等 | 81% |
+| io_interface.py | test_io_interface.py | 84% |
+| application_controller.py | test_application_controller.py | 83%（无状态命令测试） |
+| **整体** | 438 个测试用例 | **95%** |
 
 ### 测试 Fixtures
 

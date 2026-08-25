@@ -1,10 +1,11 @@
 """
 PathComparisonEngine 类测试
 
-测试 calculator 模块中的 PathComparisonEngine 类
+测试 path_engine 模块中的 PathComparisonEngine 类
 """
 import pytest
-from calculator import PathComparisonEngine, CraftingNode
+from path_engine import PathComparisonEngine
+from crafting_node import CraftingNode
 
 
 class TestPathComparisonEngineInit:

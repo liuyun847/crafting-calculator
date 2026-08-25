@@ -1,670 +1,24 @@
 """
-计算引擎模块
+计算引擎主模块（CraftingCalculator）
 
-该模块负责合成树构建、多路径选择和设备数量计算，支持特殊配方处理。
+负责合成树构建、设备数量计算和基础原料/设备统计。
+相关类已拆分为独立模块：
+- CraftingNode      → crafting_node.py（合成树节点）
+- PathComparisonEngine → path_engine.py（多路径对比）
+- RecipeAnalyzer    → recipe_analyzer.py（配方分析）
+- ByproductPool     → byproduct_pool.py（副产品池）
 """
 
-from typing import Dict, List, Any, Optional, Set, Tuple, FrozenSet
+from typing import Dict, List, Any, Optional, FrozenSet
 from functools import lru_cache
 from data_manager import RecipeManager
-from enum import Enum
+from crafting_node import CraftingNode
+from path_engine import PathComparisonEngine
 from shared.utils import (
-    get_catalysts,
-    calculate_net_output_for_item,
-    is_same_item_recipe,
-    get_net_consumption,
-    get_net_production,
-    flatten_tree,
     traverse_tree,
+    flatten_tree,
+    format_device_count,
 )
-
-
-class RecipeType(Enum):
-    """配方类型枚举"""
-
-    NORMAL = "normal"  # 普通配方
-    DOUBLING = "doubling"  # 倍增配方（产出 > 投入）
-    LOSSY = "lossy"  # 损耗配方（产出 < 投入）
-    CATALYST = "catalyst"  # 催化剂配方（有催化剂）
-    INVALID = "invalid"  # 无效配方（净产出 <= 0）
-
-
-class ByproductPool:
-    """
-    副产品池管理器
-
-    管理生产过程中产生的副产品，支持收集、消耗和溢出检测。
-    """
-
-    def __init__(self, excess_threshold: float = 100.0):
-        """
-        初始化副产品池
-
-        Args:
-            excess_threshold: 溢出阈值，超过此值的副产品被视为溢出
-        """
-        self._pool: Dict[str, float] = {}
-        self._excess_threshold: float = excess_threshold
-
-    def add_byproduct(self, item: str, amount: float) -> None:
-        """
-        添加副产品到池中
-
-        Args:
-            item: 物品名称
-            amount: 数量（个/秒）
-        """
-        if item in self._pool:
-            self._pool[item] += amount
-        else:
-            self._pool[item] = amount
-
-    def consume_byproduct(self, item: str, amount: float) -> Tuple[float, float]:
-        """
-        从池中消耗副产品
-
-        Args:
-            item: 物品名称
-            amount: 需要消耗的数量
-
-        Returns:
-            Tuple[实际消耗量, 剩余需求量]
-        """
-        available = self._pool.get(item, 0.0)
-        consumed = min(available, amount)
-        remaining = amount - consumed
-
-        if item in self._pool:
-            self._pool[item] -= consumed
-            if self._pool[item] <= 0:
-                del self._pool[item]
-
-        return (consumed, remaining)
-
-    def get_byproduct_amount(self, item: str) -> float:
-        """
-        获取副产品的当前数量
-
-        Args:
-            item: 物品名称
-
-        Returns:
-            当前数量
-        """
-        return self._pool.get(item, 0.0)
-
-    def get_excess_byproducts(self) -> List[str]:
-        """
-        获取溢出的副产品列表
-
-        Returns:
-            溢出物品名称列表
-        """
-        return [
-            item
-            for item, amount in self._pool.items()
-            if amount > self._excess_threshold
-        ]
-
-    def get_all_byproducts(self) -> Dict[str, float]:
-        """
-        获取所有副产品
-
-        Returns:
-            副产品字典 {物品名称: 数量}
-        """
-        return self._pool.copy()
-
-    def clear(self) -> None:
-        """清空副产品池"""
-        self._pool.clear()
-
-
-class RecipeAnalyzer:
-    """
-    配方分析器，负责计算配方的净产出、净消耗和设备数量
-
-    主要功能：
-    1. 计算特定物品的净产出（输出 - 输入）
-    2. 计算基于净产出的设备数量
-    3. 获取净消耗（排除催化剂）
-    4. 获取净产出（排除催化剂）
-    """
-
-    def __init__(self):
-        """
-        初始化配方分析器
-        """
-        pass
-
-    def _get_catalysts(self, recipe: Dict[str, Any]) -> Set[str]:
-        """
-        识别配方中的催化剂（输入输出都有的物品）
-
-        Args:
-            recipe: 配方数据
-
-        Returns:
-            催化剂物品名称集合
-        """
-        return get_catalysts(recipe)
-
-    def calculate_net_output_for_item(self, recipe: Dict[str, Any], item: str) -> float:
-        """
-        计算特定物品的净产出
-
-        净产出 = 输出量 - 输入量
-
-        Args:
-            recipe: 配方数据
-            item: 物品名称
-
-        Returns:
-            净产出量（负值表示净消耗）
-        """
-        return calculate_net_output_for_item(recipe, item)
-
-    def calculate_device_count(
-        self, recipe: Dict[str, Any], target_item: str, target_rate: float
-    ) -> float:
-        """
-        基于净产出计算设备数量
-
-        设备数 = 目标产出率 / 净产出率
-
-        Args:
-            recipe: 配方数据
-            target_item: 目标产物名称
-            target_rate: 目标生产速度（个/秒）
-
-        Returns:
-            所需设备数量
-        """
-        if target_rate == 0.0:
-            return 0.0
-
-        net_output = self.calculate_net_output_for_item(recipe, target_item)
-
-        if net_output == 0.0:
-            return 0.0
-
-        return target_rate / net_output
-
-    def _is_same_item_recipe(self, recipe: Dict[str, Any]) -> bool:
-        """
-        判断是否为同物品配方（输入输出包含相同物品）
-
-        同物品配方是指输入和输出都包含同一物品的配方，
-        如倍增配方 a->2*a 或损耗配方 2*a->a
-
-        Args:
-            recipe: 配方数据
-
-        Returns:
-            如果是同物品配方返回True
-        """
-        return is_same_item_recipe(recipe)
-
-    def get_net_consumption(self, recipe: Dict[str, Any]) -> Dict[str, float]:
-        """
-        获取净消耗（排除催化剂）
-
-        对于同物品配方，返回输入量
-        对于普通配方，净消耗 = 输入量（催化剂除外）
-
-        Args:
-            recipe: 配方数据
-
-        Returns:
-            净消耗字典，{物品名称: 消耗量}
-        """
-        return get_net_consumption(recipe)
-
-    def get_net_production(self, recipe: Dict[str, Any]) -> Dict[str, float]:
-        """
-        获取净产出（排除催化剂）
-
-        对于同物品配方，净产出 = 输出量 - 输入量
-        对于普通配方，净产出 = 输出量（催化剂除外）
-
-        Args:
-            recipe: 配方数据
-
-        Returns:
-            净产出字典，{物品名称: 净产出量}
-        """
-        return get_net_production(recipe)
-
-    def analyze_recipe(self, recipe: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        分析配方类型和特性
-
-        识别配方类型（普通、倍增、损耗、催化剂、无效）并返回分析结果
-
-        Args:
-            recipe: 配方数据
-
-        Returns:
-            分析结果字典，包含：
-            - type: RecipeType 枚举值
-            - catalysts: 催化剂列表
-            - net_outputs: 净产出字典
-            - is_valid: 是否为有效生产配方
-        """
-        inputs = recipe.get("inputs", {})
-        outputs = recipe.get("outputs", {})
-        catalysts = self._get_catalysts(recipe)
-
-        # 计算净产出
-        net_outputs = {}
-        has_positive_output = False
-
-        for item in set(inputs.keys()) | set(outputs.keys()):
-            net_output = self.calculate_net_output_for_item(recipe, item)
-            if net_output != 0.0:
-                net_outputs[item] = net_output
-                if net_output > 0:
-                    has_positive_output = True
-
-        # 确定配方类型
-        recipe_type = RecipeType.NORMAL
-
-        # 检查是否是同物品配方（输入输出有相同物品）
-        is_same_item = self._is_same_item_recipe(recipe)
-
-        if is_same_item:
-            # 同物品配方：检查催化剂物品的净产出
-            catalyst_has_nonzero_net = False
-            for item in catalysts:
-                net = net_outputs.get(item, 0.0)
-                if net > 0:
-                    recipe_type = RecipeType.DOUBLING
-                    catalyst_has_nonzero_net = True
-                    break
-                elif net < 0:
-                    recipe_type = RecipeType.LOSSY
-                    catalyst_has_nonzero_net = True
-                    break
-
-            if not catalyst_has_nonzero_net:
-                # 催化剂净产出为0，这是催化剂配方
-                if catalysts:
-                    recipe_type = RecipeType.CATALYST
-                else:
-                    # 没有催化剂但有同物品（理论上不应发生）
-                    for item in net_outputs:
-                        if item in inputs and item in outputs:
-                            if net_outputs[item] > 0:
-                                recipe_type = RecipeType.DOUBLING
-                            else:
-                                recipe_type = RecipeType.LOSSY
-                            break
-        elif catalysts:
-            # 有催化剂但不是同物品配方
-            recipe_type = RecipeType.CATALYST
-
-        # 如果没有正产出且不是损耗配方，则为无效配方
-        if not has_positive_output and recipe_type != RecipeType.LOSSY:
-            recipe_type = RecipeType.INVALID
-
-        return {
-            "type": recipe_type,
-            "catalysts": list(catalysts),
-            "net_outputs": net_outputs,
-            "is_valid": has_positive_output,
-        }
-
-    def is_valid_production_recipe(self, recipe: Dict[str, Any]) -> bool:
-        """
-        验证配方是否为有效的生产配方
-
-        有效生产配方必须至少有一个正净产出
-
-        Args:
-            recipe: 配方数据
-
-        Returns:
-            如果是有效生产配方返回True
-        """
-        analysis = self.analyze_recipe(recipe)
-        return analysis["is_valid"]
-
-
-class PathComparisonEngine:
-    """
-    路径对比引擎，负责分析、比较和标记多条生产路径
-
-    主要功能：
-    1. 根据设备数量选择主路径
-    2. 在每个节点找到所有其他可能的替代路径
-    3. 构建带有路径标记的合成树
-    """
-
-    def __init__(self):
-        """
-        初始化路径对比引擎
-        """
-        self._path_counter = 0  # 路径计数器，用于生成唯一path_id
-
-    def find_main_path(
-        self, production_paths: List[List[Dict[str, Any]]]
-    ) -> Optional[List[Dict[str, Any]]]:
-        """
-        根据设备数量选择主路径
-
-        选择标准：
-        1. 总设备数量最少的路径作为主路径
-        2. 如果设备数相同，选择配方数量更少的路径
-        3. 如果仍然相同，选择第一个
-
-        Args:
-            production_paths: 所有可能的生产路径列表
-
-        Returns:
-            选中的主路径，如果路径列表为空则返回None
-        """
-        if not production_paths:
-            return None
-
-        if len(production_paths) == 1:
-            return production_paths[0]
-
-        def calculate_path_score(path: List[Dict[str, Any]]) -> Tuple[float, int]:
-            """
-            计算路径的评分（设备数，配方数）
-            评分越低越好
-            """
-            # 估算设备数量（基于配方输出量）
-            total_devices = 0.0
-            for recipe in path:
-                if recipe and "outputs" in recipe and recipe["outputs"]:
-                    # 使用第一个输出的amount作为参考
-                    first_output = list(recipe["outputs"].values())[0]
-                    if isinstance(first_output, dict) and "amount" in first_output:
-                        # 设备数与产出率成反比
-                        total_devices += 1.0 / \
-                            max(first_output["amount"], 0.001)
-
-            return (total_devices, len(path))
-
-        # 按评分排序，选择最优路径
-        sorted_paths = sorted(production_paths, key=calculate_path_score)
-        return sorted_paths[0]
-
-    def find_alternative_paths_at_node(
-        self,
-        node: "CraftingNode",
-        all_paths: List[List["CraftingNode"]],
-        current_path_id: int = 0,
-    ) -> List[List["CraftingNode"]]:
-        """
-        找到指定节点处所有其他可能的路径
-
-        算法逻辑：
-        1. 找到所有包含该物品的完整路径
-        2. 排除包含当前节点对象的路径（这是当前路径，不是替代路径）
-        3. 收集其他路径在该节点的不同子树
-
-        Args:
-            node: 当前节点
-            all_paths: 所有完整的路径列表（每个路径是CraftingNode列表）
-            current_path_id: 当前路径的ID
-
-        Returns:
-            替代路径列表，每条路径是一个CraftingNode列表
-        """
-        alternative_paths = []
-
-        # 找到所有包含该物品的其他路径
-        for path in all_paths:
-            # 跳过包含当前节点对象的路径（这是当前路径，不是替代路径）
-            if node in path:
-                continue
-
-            # 找到路径中对应此物品的节点
-            matching_nodes = [n for n in path if n.item_name == node.item_name]
-
-            for match_node in matching_nodes:
-                # 检查是否是不同的路径选择，或者是不同路径中的相同节点
-                # 如果是不同对象（位于不同路径中），则认为是替代路径
-                if node is not match_node:
-                    # 提取从该节点开始的子路径
-                    sub_path = self._extract_sub_path(path, match_node)
-                    if sub_path and sub_path not in alternative_paths:
-                        alternative_paths.append(sub_path)
-
-        return alternative_paths
-
-    def _is_different_path_choice(
-        self, node1: "CraftingNode", node2: "CraftingNode"
-    ) -> bool:
-        """
-        判断两个节点是否代表不同的路径选择
-
-        判断标准：
-        1. 如果是同一个对象，则不是不同的路径选择
-        2. 使用的配方不同，则是不同的路径
-        3. 父节点不同（一个是None一个不是，或父节点不是同一个对象），则是不同的路径
-        4. 父节点是同一个对象且配方相同，则不是不同的路径选择
-
-        Args:
-            node1: 第一个节点
-            node2: 第二个节点
-
-        Returns:
-            如果是不同的路径选择返回True
-        """
-        # 如果是同一个对象，则不是不同的路径选择
-        if node1 is node2:
-            return False
-
-        # 如果配方不同，则是不同的路径
-        if node1.recipe != node2.recipe:
-            return True
-
-        # 如果父节点不同（一个是None一个不是），则是不同的路径
-        if (node1.parent is None) != (node2.parent is None):
-            return True
-
-        # 如果都有父节点，但父节点不是同一个对象，则是不同的路径
-        if node1.parent is not None and node2.parent is not None:
-            if node1.parent is not node2.parent:
-                return True
-
-        # 配方相同且父节点相同（或都为None），不是不同的路径选择
-        return False
-
-    def _extract_sub_path(
-        self, full_path: List["CraftingNode"], start_node: "CraftingNode"
-    ) -> List["CraftingNode"]:
-        """
-        从完整路径中提取从指定节点开始的子路径
-
-        Args:
-            full_path: 完整的节点路径
-            start_node: 起始节点
-
-        Returns:
-            从起始节点开始的子路径
-        """
-        try:
-            start_idx = full_path.index(start_node)
-            return full_path[start_idx:]
-        except ValueError:
-            return []
-
-    def build_path_tree_with_markers(
-        self,
-        main_path: List["CraftingNode"],
-        alternative_paths: List[List["CraftingNode"]],
-        calculator: "CraftingCalculator",
-    ) -> "CraftingNode":
-        """
-        构建带有替代路径标记的合成树
-
-        构建逻辑：
-        1. 为主路径分配 path_id=0
-        2. 为每个替代路径分配递增的 path_id
-        3. 标记替代路径上的节点 is_alternative=True
-        4. 在主路径的每个节点上存储 alternative_paths 信息
-
-        Args:
-            main_path: 主路径节点列表
-            alternative_paths: 替代路径列表
-            calculator: 用于获取配方的计算器实例
-
-        Returns:
-            带有路径标记的合成树根节点
-        """
-        if not main_path:
-            return None
-
-        # 获取根节点
-        root = main_path[0]
-
-        # 为每个替代路径分配ID
-        self._path_counter = 1
-        for alt_path in alternative_paths:
-            self._mark_alternative_path(alt_path, self._path_counter)
-            self._path_counter += 1
-
-        # 标记主路径
-        self._mark_main_path(main_path)
-
-        # 将替代路径信息附加到主路径的对应节点
-        self._attach_alternative_paths_to_main(root, alternative_paths)
-
-        return root
-
-    def _mark_alternative_path(self, path: List["CraftingNode"], path_id: int):
-        """
-        标记替代路径上的节点
-
-        Args:
-            path: 替代路径节点列表
-            path_id: 路径ID
-        """
-        for node in path:
-            node.path_id = path_id
-            node.is_alternative = True
-
-    def _mark_main_path(self, path: List["CraftingNode"]):
-        """
-        标记主路径上的节点
-
-        Args:
-            path: 主路径节点列表
-        """
-        for node in path:
-            node.path_id = 0
-            node.is_alternative = False
-
-    def _attach_alternative_paths_to_main(
-        self, root: "CraftingNode", alternative_paths: List[List["CraftingNode"]]
-    ):
-        """
-        将替代路径信息附加到主路径的对应节点
-
-        Args:
-            root: 主路径根节点
-            alternative_paths: 替代路径列表
-        """
-        # 构建从物品名称到主路径节点的映射
-        main_nodes = {}
-
-        def collect_main_nodes(node: CraftingNode):
-            if node.item_name not in main_nodes:
-                main_nodes[node.item_name] = node
-            for child in node.children:
-                collect_main_nodes(child)
-
-        collect_main_nodes(root)
-
-        # 将替代路径附加到对应的主路径节点
-        for alt_path in alternative_paths:
-            if not alt_path:
-                continue
-
-            # 找到替代路径的根物品
-            root_item = alt_path[0].item_name
-
-            # 如果主路径中有这个物品，附加替代路径
-            if root_item in main_nodes:
-                main_node = main_nodes[root_item]
-                # 避免重复添加相同的替代路径
-                if alt_path not in main_node.alternative_paths:
-                    main_node.alternative_paths.append(alt_path)
-
-
-class CraftingNode:
-    """
-    合成节点类，代表合成树中的一个节点
-
-    支持路径对比功能，可以标记主路径和替代路径，存储路径标识信息。
-    """
-
-    def __init__(self, item_name: str, amount: float):
-        """
-        初始化合成节点
-
-        Args:
-            item_name: 物品名称
-            amount: 生产速度（个/秒）
-        """
-        self.item_name = item_name
-        self.amount = amount
-        self.recipe = None  # 用于生产该物品的配方
-        self.device_count = 0  # 需要的设备数量
-        self.inputs = {}  # 输入物品字典，{物品名称: 数量}
-        self.children = []  # 子节点列表（用于生产该物品的输入物品）
-        self.parent = None  # 父节点
-
-        # 路径对比相关字段
-        self.alternative_paths: List[List["CraftingNode"]] = []  # 该节点的其他可选路径
-        self.path_id: int = 0  # 路径唯一标识，0表示主路径
-        self.is_alternative: bool = False  # 是否是替代路径上的节点
-
-    def __str__(self):
-        return (
-            f"{self.item_name}: {self.amount:.2f}/s (设备数: {self.device_count:.2f})"
-        )
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        转换为字典格式，方便JSON序列化
-
-        Returns:
-            节点的字典表示（包含路径对比信息）
-        """
-        # 序列化替代路径（只保存基本信息，避免循环引用）
-        serialized_alternatives = []
-        for alt_path in self.alternative_paths:
-            serialized_path = [
-                {
-                    "item_name": node.item_name,
-                    "amount": node.amount,
-                    "device_count": node.device_count,
-                    "path_id": node.path_id,
-                    "is_alternative": node.is_alternative,
-                }
-                for node in alt_path
-            ]
-            serialized_alternatives.append(serialized_path)
-
-        return {
-            "item_name": self.item_name,
-            "amount": self.amount,
-            "device_count": self.device_count,
-            "recipe": self.recipe if self.recipe else {},
-            "inputs": self.inputs,
-            "children": [child.to_dict() for child in self.children],
-            "path_info": {
-                "path_id": self.path_id,
-                "is_alternative": self.is_alternative,
-                "alternative_count": len(self.alternative_paths),
-            },
-            "alternative_paths": serialized_alternatives,
-        }
 
 
 class CraftingCalculator:
@@ -684,11 +38,11 @@ class CraftingCalculator:
         self.recipe_manager = recipe_manager
         self.recipes = recipe_manager.get_all_recipes()
         self.path_engine = PathComparisonEngine()  # 路径对比引擎
-        
+
     def clear_cache(self) -> None:
         """
         清除所有缓存的计算结果
-        
+
         在配方数据发生变化后调用此方法，以确保获取最新的计算结果。
         同时更新内部的 recipes 引用，确保后续计算使用最新的配方数据。
         """
@@ -850,11 +204,11 @@ class CraftingCalculator:
             for existing in result:
                 for path in path_group:
                     new_path = existing + path
-                    
+
                     # 路径长度剪枝
                     if len(new_path) > max_path_length:
                         continue
-                    
+
                     # 路径去重：通过配方ID组合生成唯一标识
                     # 空路径（基础原料）不需要去重
                     if new_path:
@@ -863,13 +217,13 @@ class CraftingCalculator:
                             continue
                         seen_paths.add(path_key)
                     temp.append(new_path)
-                    
+
                     # 提前终止：达到最大路径数量（仅当设置了 max_paths 时）
                     if max_paths is not None and len(temp) >= max_paths:
                         break
                 if max_paths is not None and len(temp) >= max_paths:
                     break
-            
+
             result = temp
             if not result:
                 break
@@ -1207,12 +561,13 @@ if __name__ == "__main__":
     print("计算结果:")
     for i, tree_dict in enumerate(trees):
         print(f"\n路径 {i+1}:")
-        print(f"总设备数: {calculator._count_total_devices(tree_dict):.2f}")
+        print(f"总设备数: {format_device_count(calculator._count_total_devices(tree_dict))}")
 
         def print_tree(node_dict, indent=0):
             prefix = "  " * indent
             print(
-                f"{prefix}{node_dict['item_name']}: {node_dict['amount']:.2f}/s (设备数: {node_dict['device_count']:.2f})"
+                f"{prefix}{node_dict['item_name']}: {node_dict['amount']:.2f}/s "
+                f"(设备数: {format_device_count(node_dict['device_count'])})"
             )
             for child in node_dict["children"]:
                 print_tree(child, indent + 1)

@@ -5,7 +5,7 @@
 """
 import pytest
 from typing import Dict, Any
-from calculator import RecipeAnalyzer, RecipeType
+from recipe_analyzer import RecipeAnalyzer, RecipeType
 
 
 @pytest.fixture

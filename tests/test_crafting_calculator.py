@@ -4,7 +4,8 @@ CraftingCalculator 类测试
 测试 calculator 模块中的 CraftingCalculator 类
 """
 import pytest
-from calculator import CraftingCalculator, CraftingNode
+from calculator import CraftingCalculator
+from crafting_node import CraftingNode
 
 
 class TestCraftingCalculatorInit:

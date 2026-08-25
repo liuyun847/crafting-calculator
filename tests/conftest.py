@@ -150,7 +150,7 @@ def crafting_node():
     Yields:
         CraftingNode: 合成节点实例
     """
-    from calculator import CraftingNode
+    from crafting_node import CraftingNode
 
     node = CraftingNode("铁锭", 1.0)
     yield node
@@ -164,7 +164,7 @@ def path_comparison_engine():
     Yields:
         PathComparisonEngine: 路径对比引擎实例
     """
-    from calculator import PathComparisonEngine
+    from path_engine import PathComparisonEngine
 
     engine = PathComparisonEngine()
     yield engine

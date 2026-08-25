@@ -12,7 +12,8 @@
 并手动设置配方来测试设备统计功能。
 """
 import pytest
-from calculator import CraftingCalculator, CraftingNode
+from calculator import CraftingCalculator
+from crafting_node import CraftingNode
 
 
 @pytest.fixture

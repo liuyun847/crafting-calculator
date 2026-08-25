@@ -8,7 +8,8 @@
 import pytest
 
 from application_controller import ApplicationController
-from calculator import CraftingCalculator, CraftingNode
+from calculator import CraftingCalculator
+from crafting_node import CraftingNode
 from io_interface import IOInterface
 
 

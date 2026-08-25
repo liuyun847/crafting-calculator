@@ -13,9 +13,11 @@ from typing import Dict, Any, Tuple, Optional, List
 
 from io_interface import IOInterface
 from data_manager import RecipeManager
-from calculator import CraftingCalculator, CraftingNode
+from calculator import CraftingCalculator
+from crafting_node import CraftingNode
 from config_manager import config_manager
 from expression_parser import parse_expression
+from shared.utils import format_device_count
 
 
 class ApplicationController:
@@ -395,7 +397,8 @@ class ApplicationController:
             f"\n切换节点 #{node_id} ({info['item_name']}) 到路径 {path_index + 1}"
         )
         self.io.print(
-            f"原设备数: {old_device:.2f} → 新设备数: {new_device:.2f}"
+            f"原设备数: {format_device_count(old_device)} → "
+            f"新设备数: {format_device_count(new_device)}"
         )
 
         new_id_map = self._assign_node_ids(new_tree)
@@ -728,7 +731,8 @@ class ApplicationController:
             device_info_prefix = "".join(prefixes)
             if indent > 0:
                 device_info_prefix += "  " if is_last else "│ "
-            self.io.print(f"{device_info_prefix}│设备数: {device_count:.2f}")
+            self.io.print(
+                f"{device_info_prefix}│设备数: {format_device_count(device_count)}")
             if tree_dict.get("recipe"):
                 device = tree_dict["recipe"].get("device", "未知设备")
                 self.io.print(f"{device_info_prefix}│设备: {device}")
@@ -762,7 +766,7 @@ class ApplicationController:
             self.io.print("无设备使用")
         else:
             for device, count in device_stats.items():
-                self.io.print(f"{device}: {count:.2f} 台")
+                self.io.print(f"{device}: {format_device_count(count)} 台")
         self.io.print("-" * 50)
 
     def _dict_to_node(
@@ -871,10 +875,11 @@ class ApplicationController:
             else:
                 diff_str = "(相同)"
             self.io.print(f"\n  路径 {i}:")
-            self.io.print(f"    设备总数: {alt_device_count:.2f} {diff_str}")
+            self.io.print(
+                f"    设备总数: {format_device_count(alt_device_count)} {diff_str}")
             path_items = " → ".join(
                 f"{node.get('item_name', '未知')}"
-                f"({node.get('device_count', 0):.1f})"
+                f"({format_device_count(node.get('device_count', 0))})"
                 for node in alt_path[:5]
             )
             if len(alt_path) > 5:

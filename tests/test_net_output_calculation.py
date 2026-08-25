@@ -19,7 +19,7 @@ def recipe_analyzer():
     Yields:
         RecipeAnalyzer: 配方分析器实例
     """
-    from calculator import RecipeAnalyzer
+    from recipe_analyzer import RecipeAnalyzer
     analyzer = RecipeAnalyzer()
     yield analyzer
 

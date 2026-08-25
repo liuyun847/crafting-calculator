@@ -1,10 +1,10 @@
 """
 CraftingNode 类测试
 
-测试 calculator 模块中的 CraftingNode 类
+测试 crafting_node 模块中的 CraftingNode 类
 """
 import pytest
-from calculator import CraftingNode
+from crafting_node import CraftingNode
 
 
 class TestCraftingNodeInit:
@@ -68,7 +68,7 @@ class TestCraftingNodeStr:
 
         result = str(node)
 
-        assert "0.00" in result
+        assert "设备数: 0" in result
 
 
 class TestCraftingNodeToDict:

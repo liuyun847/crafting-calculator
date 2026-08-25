@@ -240,6 +240,55 @@ def flatten_tree(
     return result
 
 
+def _format_precise_value(count: float) -> str:
+    """
+    格式化设备精确值：默认两位小数，两位会归零时自动提高精度
+
+    2/4/6/10 位小数依次尝试，全部归零（数值 < 1e-10）时改用科学计数法兜底。
+
+    Args:
+        count: 设备数量
+
+    Returns:
+        格式化后的精确值字符串
+    """
+    for digits in (2, 4, 6, 10):
+        formatted = f"{count:.{digits}f}"
+        if float(formatted) != 0.0:
+            return formatted
+    return f"{count:.1e}"
+
+
+def format_device_count(count: float) -> str:
+    """
+    格式化设备数量显示：向上取整值(精确值)
+
+    示例：2.18 → "3(2.18)"；精确值为整数时只显示整数（如 3.0 → "3"）；
+    精确值极小（两位小数归零）时自动提高精度，如 0.0005 → "1(0.0005)"。
+
+    前置条件：count 为非负设备数（由 required_rate/output_rate 计算得出）。
+    负数极少出现（损耗配方），此时仍按向上取整处理，如 -10.5 → "-10(-10.50)"。
+
+    Args:
+        count: 设备数量（可能是小数）
+
+    Returns:
+        格式化字符串，如 "3(2.18)" 或 "3"
+    """
+    import math
+
+    if count == 0.0:
+        return "0"
+
+    # 浮点容差判定是否为整数
+    nearest = round(count)
+    if abs(count - nearest) < 1e-9:
+        return str(nearest)
+
+    ceil_value = math.ceil(count - 1e-9)
+    return f"{ceil_value}({_format_precise_value(count)})"
+
+
 def ensure_directory_exists(directory_path: str) -> None:
     """
     确保目录存在，如果不存在则创建
@@ -307,6 +356,7 @@ __all__ = [
     'safe_get_nested_value',
     'traverse_tree',
     'flatten_tree',
+    'format_device_count',
     'ensure_directory_exists',
     'save_yaml_file',
     'load_yaml_file',

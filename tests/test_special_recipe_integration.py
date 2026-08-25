@@ -199,7 +199,7 @@ def byproduct_pool():
     Yields:
         ByproductPool: 副产品池实例
     """
-    from calculator import ByproductPool
+    from byproduct_pool import ByproductPool
     pool = ByproductPool()
     yield pool
     pool.clear()
@@ -213,7 +213,7 @@ def recipe_analyzer():
     Yields:
         RecipeAnalyzer: 配方分析器实例
     """
-    from calculator import RecipeAnalyzer
+    from recipe_analyzer import RecipeAnalyzer
     analyzer = RecipeAnalyzer()
     yield analyzer
 
